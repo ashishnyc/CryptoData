@@ -110,6 +110,9 @@ class ByBitMarketDataManager:
         contract_type: str = ContractType.LINEAR_PERPETUAL.value,
         quote_coin: str = "USDT",
     ):
+        # Download Linear Category Instruments
+        self.download_instruments_to_db(category=Category.LINEAR)
+
         # Fetch current data
         current_instruments = self.get_current_linear_instruments(quote_coin=quote_coin)
         current_instruments_map = {
@@ -287,10 +290,11 @@ class ByBitMarketDataManager:
                 continue
         print(f"Total processed: {total_processed}")
 
-    def process_linear_instruments_klines(self) -> None:
-        """Process klines using direct SQL operations for maximum performance"""
+    def process_linear_instruments_klines(self, kline_date=None) -> None:
+        # Download klines if kline_date is provided
+        self.download_linear_instruments_klines_to_db(kline_date=kline_date)
+
         start_time = time.time()
-        total_processed = 0
 
         # Direct SQL for better performance while maintaining SQLModel table names
         insert_query = f"""

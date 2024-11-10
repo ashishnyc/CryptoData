@@ -263,3 +263,79 @@ class ByBitLinearInstrumentsKline5m(SQLModel, table=True):
     __table_args__ = (
         UniqueConstraint("symbol", "period_start", name="uix_symbol_period_start"),
     )
+
+
+class ByBitLinearInstrumentsKline15m(SQLModel, table=True):
+    __tablename__ = "bybit_linear_perp_kline_15m"
+
+    # Primary key and tracking fields
+    id: Optional[int] = Field(default=None, primary_key=True)
+    symbol: str
+    period_start: datetime
+    open_price: Decimal = Field(sa_column=Numeric(38, 8))
+    high_price: Decimal = Field(sa_column=Numeric(38, 8))
+    low_price: Decimal = Field(sa_column=Numeric(38, 8))
+    close_price: Decimal = Field(sa_column=Numeric(38, 8))
+    volume: Decimal = Field(sa_column=Numeric(38, 8))
+    turnover: Decimal = Field(sa_column=Numeric(38, 8))
+
+    __table_args__ = (
+        UniqueConstraint("symbol", "period_start", name="uix_symbol_period_start_15m"),
+    )
+
+
+class ByBitLinearInstrumentsKline1h(SQLModel, table=True):
+    __tablename__ = "bybit_linear_perp_kline_1h"
+
+    # Primary key and tracking fields
+    id: Optional[int] = Field(default=None, primary_key=True)
+    symbol: str
+    period_start: datetime
+    open_price: Decimal = Field(sa_column=Numeric(38, 8))
+    high_price: Decimal = Field(sa_column=Numeric(38, 8))
+    low_price: Decimal = Field(sa_column=Numeric(38, 8))
+    close_price: Decimal = Field(sa_column=Numeric(38, 8))
+    volume: Decimal = Field(sa_column=Numeric(38, 8))
+    turnover: Decimal = Field(sa_column=Numeric(38, 8))
+
+    __table_args__ = (
+        UniqueConstraint("symbol", "period_start", name="uix_symbol_period_start_1h"),
+    )
+
+
+class ByBitLinearInstrumentsKline4h(SQLModel, table=True):
+    __tablename__ = "bybit_linear_perp_kline_4h"
+
+    # Primary key and tracking fields
+    id: Optional[int] = Field(default=None, primary_key=True)
+    symbol: str
+    period_start: datetime
+    open_price: Decimal = Field(sa_column=Numeric(38, 8))
+    high_price: Decimal = Field(sa_column=Numeric(38, 8))
+    low_price: Decimal = Field(sa_column=Numeric(38, 8))
+    close_price: Decimal = Field(sa_column=Numeric(38, 8))
+    volume: Decimal = Field(sa_column=Numeric(38, 8))
+    turnover: Decimal = Field(sa_column=Numeric(38, 8))
+
+    __table_args__ = (
+        UniqueConstraint("symbol", "period_start", name="uix_symbol_period_start_4h"),
+    )
+
+
+class ByBitLinearInstrumentsKline1d(SQLModel, table=True):
+    __tablename__ = "bybit_linear_perp_kline_1d"
+
+    # Primary key and tracking fields
+    id: Optional[int] = Field(default=None, primary_key=True)
+    symbol: str
+    period_start: datetime
+    open_price: Decimal = Field(sa_column=Numeric(38, 8))
+    high_price: Decimal = Field(sa_column=Numeric(38, 8))
+    low_price: Decimal = Field(sa_column=Numeric(38, 8))
+    close_price: Decimal = Field(sa_column=Numeric(38, 8))
+    volume: Decimal = Field(sa_column=Numeric(38, 8))
+    turnover: Decimal = Field(sa_column=Numeric(38, 8))
+
+    __table_args__ = (
+        UniqueConstraint("symbol", "period_start", name="uix_symbol_period_start_1d"),
+    )

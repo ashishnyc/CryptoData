@@ -339,3 +339,11 @@ class ByBitMarketDataManager:
             self.dbClient.rollback()
             print(f"Error during processing: {e}")
             raise
+
+    def get_linear_instruments_klines(self, symbol: str):
+        stmt = (
+            select(Market.ByBitLinearInstrumentsKline5m)
+            .where(Market.ByBitLinearInstrumentsKline5m.symbol == symbol)
+            .order_by(Market.ByBitLinearInstrumentsKline5m.period_start)
+        )
+        return self.dbClient.exec(stmt).all()

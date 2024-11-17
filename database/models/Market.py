@@ -1,4 +1,5 @@
 from datetime import datetime
+from enum import Enum
 from typing import Optional
 from sqlmodel import SQLModel, Field, Numeric, UniqueConstraint
 from decimal import Decimal
@@ -339,3 +340,20 @@ class ByBitLinearInstrumentsKline1d(SQLModel, table=True):
     __table_args__ = (
         UniqueConstraint("symbol", "period_start", name="uix_symbol_period_start_1d"),
     )
+
+
+class Timeframe(Enum):
+    FIVE_MINUTES = "5m"
+    FIFTEEN_MINUTES = "15m"
+    ONE_HOUR = "1h"
+    FOUR_HOUR = "4h"
+    ONE_DAY = "1d"
+
+
+timeframe_table_map = {
+    Timeframe.FIVE_MINUTES: ByBitLinearInstrumentsKline5m,
+    Timeframe.FIFTEEN_MINUTES: ByBitLinearInstrumentsKline15m,
+    Timeframe.ONE_HOUR: ByBitLinearInstrumentsKline1h,
+    Timeframe.FOUR_HOUR: ByBitLinearInstrumentsKline4h,
+    Timeframe.ONE_DAY: ByBitLinearInstrumentsKline1d,
+}

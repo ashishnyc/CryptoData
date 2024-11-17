@@ -1,6 +1,5 @@
 import argparse
 from dataManagers.ByBitMarketDataManager import ByBitMarketDataManager
-from xchanges.ByBit import Category
 import utils
 
 
@@ -11,10 +10,12 @@ def main(start_date=None, end_date=None):
         for single_date in utils.daterange(start_date, end_date):
             print(f"running for {single_date}")
             bb.process_linear_instruments_klines(kline_date=single_date)
+            bb.aggregate_linear_instruments_klines()
 
     else:
         bb.process_linear_perpetual_usdt()
         bb.process_linear_instruments_klines()
+        bb.aggregate_linear_instruments_klines()
 
 
 if __name__ == "__main__":

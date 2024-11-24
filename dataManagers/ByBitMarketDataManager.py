@@ -348,11 +348,21 @@ class ByBitMarketDataManager:
             print(f"Error during processing: {e}")
             raise
 
-    def get_linear_instruments_klines(self, symbol: str):
+    def get_linear_instruments_klines(self, symbol: str, timeframe: None):
+        if timeframe is None or timeframe == "5m":
+            tbl_kline = Market.ByBitLinearInstrumentsKline5m
+        elif timeframe == "15m":
+            tbl_kline = Market.ByBitLinearInstrumentsKline15m
+        elif timeframe == "1h":
+            tbl_kline = Market.ByBitLinearInstrumentsKline1h
+        elif timeframe == "4h":
+            tbl_kline = Market.ByBitLinearInstrumentsKline4h
+        elif timeframe == "1d":
+            tbl_kline = Market.ByBitLinearInstrumentsKline1d
         stmt = (
-            select(Market.ByBitLinearInstrumentsKline5m)
-            .where(Market.ByBitLinearInstrumentsKline5m.symbol == symbol)
-            .order_by(Market.ByBitLinearInstrumentsKline5m.period_start)
+            select(tbl_kline)
+            .where(tbl_kline.symbol == symbol)
+            .order_by(tbl_kline.period_start)
         )
         return self.dbClient.exec(stmt).all()
 

@@ -57,7 +57,8 @@ __pycache__/
 
 # C extensions
 *.so
-
+alembic
+alembic/
 # Distribution / packaging
 .Python
 build/
@@ -254,3 +255,5 @@ pip-selfcheck.json
 
 # End of https://www.toptal.com/developers/gitignore/api/python,macos,venv,linux,visualstudiocode
 .vscode/launch.json
+
+web/node_modules/

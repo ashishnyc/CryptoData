@@ -2,14 +2,10 @@ import json
 from typing import List
 from fastapi import (
     FastAPI,
-    HTTPException,
-    Depends,
     Query,
     WebSocket,
     WebSocketDisconnect,
 )
-from sqlalchemy.orm import Session
-from . import crud, models, schemas
 from dataManagers.ByBitMarketDataManager import ByBitMarketDataManager
 from fastapi.middleware.cors import CORSMiddleware
 

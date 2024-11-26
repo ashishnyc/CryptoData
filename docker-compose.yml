@@ -3,8 +3,6 @@ services:
     build:
       context: .
       dockerfile: api/Dockerfile
-    ports:
-      - "8000:8000"
     volumes:
       - ./api:/app/api
       - ./database:/app/database
@@ -14,6 +12,11 @@ services:
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/app
     command: uvicorn load:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - internal-network
+    expose:
+      - "8000"
+
 
   frontend:
     build:
@@ -29,3 +32,9 @@ services:
     environment:
       - REACT_APP_API_URL=http://backend:8000
     command: npm run dev -- --host 0.0.0.0
+
+# Define a custom internal network
+networks:
+  internal-network:
+    driver: bridge
+    internal: true  # This makes the network inaccessible from the host

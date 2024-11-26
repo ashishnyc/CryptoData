@@ -1,5 +1,5 @@
 # Use an official Node runtime as a parent image
-FROM node:16-alpine
+FROM node:20-alpine
 
 # Set the working directory in the container
 WORKDIR /app
@@ -8,13 +8,13 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install project dependencies
-RUN npm install
+RUN npm ci
 
 # Copy the rest of the application code
-COPY . .
+COPY --chown=node:node . .
 
 # Expose the port the app runs on
 EXPOSE 3000
 
 # Run the development server
-CMD ["npm", "run", "dev"]
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

@@ -53,6 +53,29 @@ const Chart = ({ symbol, timeframe }) => {
             borderVisible: false,
             wickUpColor: '#26a69a',
             wickDownColor: '#ef5350',
+            priceFormat: {
+                type: 'custom',
+                formatter: price => {
+                    // Check if the price has more than 2 decimal places
+                    const decimalPlaces = (price.toString().split('.')[1] || '').length;
+                    if (decimalPlaces > 2) {
+                        // For small numbers (e.g., 0.00012345), show up to 8 decimal places
+                        if (Math.abs(price) < 0.01) {
+                            return price.toFixed(8);
+                        }
+                        // For medium numbers (e.g., 0.12345), show up to 6 decimal places
+                        else if (Math.abs(price) < 1) {
+                            return price.toFixed(6);
+                        }
+                        // For larger numbers, show up to 4 decimal places
+                        else {
+                            return price.toFixed(4);
+                        }
+                    }
+                    // For regular numbers, show 2 decimal places
+                    return price.toFixed(2);
+                },
+            },
         });
 
         const volumeSeries = chart.addHistogramSeries({

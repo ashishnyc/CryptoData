@@ -9,59 +9,128 @@ const Chart = ({ symbol, timeframe }) => {
         const chart = createChart(chartContainerRef.current, {
             width: chartContainerRef.current.clientWidth,
             height: chartContainerRef.current.clientHeight,
+            layout: {
+                background: { color: '#fafafa' },
+                textColor: '#333',
+            },
+            grid: {
+                vertLines: { color: '#f0f0f0' },
+                horzLines: { color: '#f0f0f0' },
+            },
+            timeScale: {
+                timeVisible: true,
+                secondsVisible: false,
+                tickMarkFormatter: (time) => {
+                    const date = new Date(time * 1000);
+                    // Basic formatting based on timeframe
+                    switch (timeframe) {
+                        case '1m':
+                        case '5m':
+                        case '15m':
+                        case '30m':
+                            return date.toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            });
+                        case '1h':
+                        case '4h':
+                            return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:00`;
+                        case '1d':
+                            return date.toLocaleDateString([], {
+                                month: 'short',
+                                day: 'numeric'
+                            });
+                        default:
+                            return date.toLocaleDateString();
+                    }
+                },
+            },
         });
 
-        const candlestickSeries = chart.addCandlestickSeries();
+        const candlestickSeries = chart.addCandlestickSeries({
+            upColor: '#26a69a',
+            downColor: '#ef5350',
+            borderVisible: false,
+            wickUpColor: '#26a69a',
+            wickDownColor: '#ef5350',
+        });
+
         const volumeSeries = chart.addHistogramSeries({
             color: '#26a69a',
-            priceFormat: {
-                type: 'volume',
-            },
+            priceFormat: { type: 'volume' },
             priceScaleId: 'volume',
         });
+
         chart.priceScale('volume').applyOptions({
             scaleMargins: {
                 top: 0.8,
                 bottom: 0,
             },
-            alignLabels: false,
         });
 
         const fetchData = async () => {
             try {
                 const data = await fetchSymbolData(symbol, timeframe);
+                console.log('Fetched data:', data); // Debug log
+
+                if (!data || data.length === 0) {
+                    console.error('No data received');
+                    return;
+                }
+
                 const candlestickData = data.map(item => ({
-                    time: new Date(item.time).getTime(),
-                    open: item.open,
-                    high: item.high,
-                    low: item.low,
-                    close: item.close,
+                    time: Math.floor(item.time), // Ensure we have integer timestamps
+                    open: parseFloat(item.open),
+                    high: parseFloat(item.high),
+                    low: parseFloat(item.low),
+                    close: parseFloat(item.close),
                 }));
+
                 const volumeData = data.map(item => ({
-                    time: new Date(item.time).getTime(),
-                    value: item.volume,
-                    color: item.close > item.open ? '#26a69a' : '#ef5350',
+                    time: Math.floor(item.time), // Ensure we have integer timestamps
+                    value: parseFloat(item.volume),
+                    color: parseFloat(item.close) > parseFloat(item.open) ? '#26a69a' : '#ef5350',
                 }));
+
+                console.log('Processed candlestick data:', candlestickData[0]); // Debug log
                 candlestickSeries.setData(candlestickData);
                 volumeSeries.setData(volumeData);
+
+                // Fit content after setting data
+                chart.timeScale().fitContent();
             } catch (error) {
-                console.error('Error fetching data:', error);
+                console.error('Error fetching or processing data:', error);
             }
         };
 
+        // Handle window resize
+        const handleResize = () => {
+            if (chartContainerRef.current) {
+                chart.applyOptions({
+                    width: chartContainerRef.current.clientWidth,
+                    height: chartContainerRef.current.clientHeight,
+                });
+            }
+        };
+
+        window.addEventListener('resize', handleResize);
         fetchData();
 
         return () => {
+            window.removeEventListener('resize', handleResize);
             chart.remove();
         };
     }, [symbol, timeframe]);
 
-    return <div ref={chartContainerRef} className="h-96 bg-gray-50 rounded-lg" />;
+    return (
+        <div
+            ref={chartContainerRef}
+            className="h-96 bg-gray-50 rounded-lg shadow-sm"
+            style={{ minHeight: '400px' }}
+        />
+    );
 };
-
-// Mock function to simulate fetching Kline data for a symbol and timeframe
 const fetchSymbolData = async (symbol, timeframe) => {
-    // Replace this with your actual data fetching logic
     const data = await marketService.getKlineData(symbol, timeframe);
     return data;
 };

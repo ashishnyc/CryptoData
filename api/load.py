@@ -56,7 +56,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
 
 # Example endpoint
-@app.get("/symbols/")
+@app.get("/api/symbols")
 def read_instruments():
     bb = ByBitMarketDataManager()
     instruments = bb.get_current_linear_instruments(quote_coin="USDT")
@@ -66,7 +66,7 @@ def read_instruments():
     return output
 
 
-@app.get("/klines/{symbol}")
+@app.get("/api/klines/{symbol}")
 def read_klines(
     symbol: str,
     timeframe: str = Query(None, description="Timeframe for the klines"),

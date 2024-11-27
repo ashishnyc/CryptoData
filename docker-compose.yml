@@ -32,9 +32,10 @@ services:
     environment:
       - REACT_APP_API_URL=http://backend:8000
     command: npm run dev -- --host 0.0.0.0
+    networks:
+      - internal-network
 
 # Define a custom internal network
 networks:
   internal-network:
     driver: bridge
-    internal: true  # This makes the network inaccessible from the host

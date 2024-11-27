@@ -520,3 +520,67 @@ class ByBitMarketDataManager:
         for symbol in symbols_to_aggregate:
             print("Processing symbol: ", symbol)
             self.aggregate_linear_instrument_klines(symbol=symbol)
+
+    def get_missing_kline_periods(
+        self,
+        symbol: str,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+    ) -> list[datetime]:
+        """
+        Check for missing 5-minute candles in the time series data.
+
+        Args:
+            symbol (str): The trading pair symbol to check
+            start_date (datetime, optional): Start date to check from. If None, uses first available candle
+            end_date (datetime, optional): End date to check until. If None, uses current time
+
+        Returns:
+            list[datetime]: List of datetime objects representing missing periods
+        """
+        # Get all existing candles for the symbol
+        tbl_kline = Market.ByBitLinearInstrumentsKline5m
+
+        # Build base query
+        query = select(tbl_kline.period_start).where(tbl_kline.symbol == symbol)
+
+        # Add date filters if provided
+        if start_date:
+            query = query.where(tbl_kline.period_start >= start_date)
+        if end_date:
+            query = query.where(tbl_kline.period_start <= end_date)
+
+        # Order by period start
+        query = query.order_by(tbl_kline.period_start)
+
+        # Execute query and get all timestamps
+        existing_periods = self.dbClient.exec(query).all()
+
+        if not existing_periods:
+            return []
+
+        # If start_date not provided, use first available candle
+        if not start_date:
+            start_date = existing_periods[0]
+
+        # If end_date not provided, use current time rounded down to nearest 5 minutes
+        if not end_date:
+            end_date = datetime.now().replace(second=0, microsecond=0)
+            end_date = end_date - timedelta(minutes=end_date.minute % 5)
+
+        # Generate all expected 5-minute periods
+        expected_periods = []
+        current_period = start_date
+        while current_period <= end_date:
+            expected_periods.append(current_period)
+            current_period += timedelta(minutes=5)
+
+        # Convert existing periods to set for O(1) lookup
+        existing_periods_set = set(existing_periods)
+
+        # Find missing periods
+        missing_periods = [
+            period for period in expected_periods if period not in existing_periods_set
+        ]
+
+        return missing_periods

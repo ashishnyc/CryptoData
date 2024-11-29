@@ -94,7 +94,6 @@ const Chart = ({ symbol, timeframe }) => {
         const fetchData = async () => {
             try {
                 const data = await fetchSymbolData(symbol, timeframe);
-                console.log('Fetched data:', data); // Debug log
 
                 if (!data || data.length === 0) {
                     console.error('No data received');
@@ -115,7 +114,6 @@ const Chart = ({ symbol, timeframe }) => {
                     color: parseFloat(item.close) > parseFloat(item.open) ? '#26a69a' : '#ef5350',
                 }));
 
-                console.log('Processed candlestick data:', candlestickData[0]); // Debug log
                 candlestickSeries.setData(candlestickData);
                 volumeSeries.setData(volumeData);
 

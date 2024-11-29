@@ -2,26 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { ArrowUpCircle, ArrowDownCircle, DollarSign, RefreshCw } from 'lucide-react';
 import { marketService } from './services/api';
 import ChartComponent from './components/ChartComponent';
-import Symbols from './components/SymbolsComponent';
 
 const TradingDashboard = () => {
-  const [activeSymbol, setActiveSymbol] = useState('BTCUSDT');
-  const [timeframe, setTimeframe] = useState('1h');
-  const [symbols, setSymbols] = useState([]);
-
-  const timeframes = ['5m', '15m', '1h', '4h', '1d'];
-  useEffect(() => {
-    const fetchSymbols = async () => {
-      try {
-        const fetchedSymbols = await marketService.getSymbols();
-        setSymbols(Array.isArray(fetchedSymbols) ? fetchedSymbols : []);
-      } catch (error) {
-        console.error('Error fetching symbols:', error);
-      }
-    };
-    fetchSymbols();
-  }, []);
-
   const opportunities = [
     { id: 1, symbol: 'BTCUSDT', type: 'LONG', entry: 42000, target: 43000, stop: 41500 },
     { id: 2, symbol: 'ETHUSDT', type: 'SHORT', entry: 2800, target: 2700, stop: 2850 }
@@ -34,16 +16,8 @@ const TradingDashboard = () => {
 
   return (
     <div className="bg-gray-50 p-6 content-center">
-      <h1 className="text-4xl font-bold text-gray-900 mb-8">Trading Dashboard</h1>
-
-      {/* Chart Section */}
-
-      <ChartComponent
-        activeSymbol={activeSymbol}
-        timeframes={timeframes}
-        timeframe={timeframe}
-        setTimeframe={setTimeframe}
-      />
+      <h1 className="text-4xl font-bold text-gray-900 mb-6">Trading Dashboard</h1>
+      <ChartComponent />
 
       {/* Opportunities Section */}
       <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
@@ -103,13 +77,6 @@ const TradingDashboard = () => {
           ))}
         </div>
       </div>
-
-      {/* Symbols Section */}
-      <Symbols
-        symbols={symbols}
-        activeSymbol={activeSymbol}
-        setActiveSymbol={setActiveSymbol}
-      />
     </div>
   );
 };

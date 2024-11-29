@@ -4,46 +4,30 @@ import Select from 'react-select';
 import { marketService } from '../services/api';
 
 const ChartComponent = ({ }) => {
-    const [activeSymbol, setActiveSymbol] = useState('BTCUSDT');
+    const [activeSymbolId, setActiveSymbolId] = useState(1);
     const [timeframe, setTimeframe] = useState('1d');
-    const [symbols, setSymbols] = useState([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const [symbolsMap, setSymbolsMap] = useState({});
     const timeframes = ['5m', '15m', '1h', '4h', '1d'];
-    const fetchSymbols = useCallback(async () => {
+    const fetchSymbols = async () => {
         try {
-            const fetchedSymbols = await marketService.getSymbols();
+            const symbols = await marketService.getSymbols();
+            setSymbolsMap(symbols);
 
-            // Validate and transform the fetched symbols
-            const validSymbols = Array.isArray(fetchedSymbols)
-                ? fetchedSymbols
-                    .filter(symbol => symbol && typeof symbol === 'string')
-                    .map(symbol => ({
-                        value: symbol,
-                        label: symbol
-                    }))
-                : [];
-
-            setSymbols(validSymbols);
-
-            // If we don't have the active symbol in our new list, reset to first available
-            if (validSymbols.length > 0 && !validSymbols.find(s => s.value === activeSymbol)) {
-                setActiveSymbol(validSymbols[0].value);
+            const symbolIds = Object.keys(symbols);
+            if (symbolIds.length && !symbols[activeSymbolId]) {
+                setActiveSymbolId(symbolIds[0]);
             }
         } catch (error) {
             console.error('Error fetching symbols:', error);
         }
-    }, [activeSymbol]);
-    // Initial fetch
+    };
     useEffect(() => {
-        const initializeData = async () => {
-            setIsLoading(true);
-            await fetchSymbols();
-            setIsLoading(false);
-        };
-
-        initializeData();
-    }, [fetchSymbols]);
-
+        fetchSymbols();
+    }, []);
+    const selectOptions = Object.entries(symbolsMap).map(([id, data]) => ({
+        value: id,
+        label: data.symbol
+    }));
 
     const customStyles = {
         control: (provided) => ({
@@ -69,24 +53,16 @@ const ChartComponent = ({ }) => {
     };
 
     const handleSymbolChange = (selectedOption) => {
-        setActiveSymbol(selectedOption.value);
+        setActiveSymbolId(selectedOption.value);
     };
-    const handleRefresh = async () => {
-        setIsRefreshing(true);
-        try {
-            // Add your refresh logic here
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate refresh
-        } finally {
-            setIsRefreshing(false);
-        }
-    };
+
     return (
         <div className="bg-white rounded-lg shadow-sm p-3 mb-2">
             <div className="flex justify-between items-center mb-2">
                 <div className="flex items-center gap-2">
                     <Select
-                        options={symbols}
-                        value={symbols.find(symbol => symbol.value === activeSymbol)}
+                        options={selectOptions}
+                        value={selectOptions.find(option => option.value === activeSymbolId)}
                         onChange={handleSymbolChange}
                         isSearchable={true}
                         placeholder="Search symbol..."
@@ -109,7 +85,7 @@ const ChartComponent = ({ }) => {
                 </div>
             </div>
             <div className="bg-white rounded-lg shadow-sm p-2 mb-2">
-                <Chart symbol={activeSymbol} timeframe={timeframe} />
+                <Chart symbol={symbolsMap[activeSymbolId]?.symbol} timeframe={timeframe} priceScale={symbolsMap[activeSymbolId]?.priceScale} />
             </div>
         </div >
     );

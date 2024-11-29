@@ -55,14 +55,13 @@ async def websocket_endpoint(websocket: WebSocket):
         manager.disconnect(websocket)
 
 
-# Example endpoint
 @app.get("/api/symbols")
 def read_instruments():
     bb = ByBitMarketDataManager()
     instruments = bb.get_current_linear_instruments(quote_coin="USDT")
     output = []
     for instrument in instruments:
-        output.append(instrument.symbol)
+        output.append((instrument.id, instrument.symbol, instrument.price_scale))
     return output
 
 

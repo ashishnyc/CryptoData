@@ -23,8 +23,19 @@ export const marketService = {
     },
 
     getSymbols: async () => {
-        const response = await api.get('/symbols');
-        const symbolsArray = Object.values(response.data);
-        return symbolsArray;
+        try {
+            const response = await api.get('/symbols');
+            const symbolsMap = response.data.reduce((acc, [id, symbol, priceScale]) => {
+                acc[id] = {
+                    symbol: symbol,
+                    priceScale: priceScale
+                };
+                return acc;
+            }, {});
+            return symbolsMap;
+        } catch (error) {
+            console.error('Error in getSymbols:', error);
+            return {};
+        }
     }
 };

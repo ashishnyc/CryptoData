@@ -19,31 +19,7 @@ const Chart = ({ symbol, timeframe, priceScale }) => {
             },
             timeScale: {
                 timeVisible: true,
-                secondsVisible: false,
-                tickMarkFormatter: (time) => {
-                    const date = new Date(time * 1000);
-                    // Basic formatting based on timeframe
-                    switch (timeframe) {
-                        case '1m':
-                        case '5m':
-                        case '15m':
-                        case '30m':
-                            return date.toLocaleTimeString([], {
-                                hour: '2-digit',
-                                minute: '2-digit'
-                            });
-                        case '1h':
-                        case '4h':
-                            return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:00`;
-                        case '1d':
-                            return date.toLocaleDateString([], {
-                                month: 'short',
-                                day: 'numeric'
-                            });
-                        default:
-                            return date.toLocaleDateString();
-                    }
-                },
+                secondsVisible: true,
             },
         });
 

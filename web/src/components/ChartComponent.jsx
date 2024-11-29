@@ -45,7 +45,7 @@ const ChartComponent = () => {
     const customStyles = {
         control: (base) => ({
             ...base,
-            width: '250px',
+            width: '300px',
             backgroundColor: isDark ? '#1C2127' : 'white',
             borderColor: isDark ? '#2D3748' : '#e2e8f0',
             '&:hover': {

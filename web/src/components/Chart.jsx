@@ -74,8 +74,10 @@ const Chart = ({ symbol, timeframe, priceScale }) => {
                 candlestickSeries.setData(candlestickData);
                 volumeSeries.setData(volumeData);
 
-                // Fit content after setting data
-                chart.timeScale().fitContent();
+                chart.timeScale().setVisibleLogicalRange({
+                    from: candlestickData.length - 100,
+                    to: candlestickData.length - 1
+                });
             } catch (error) {
                 console.error('Error fetching or processing data:', error);
             }

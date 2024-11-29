@@ -14,8 +14,8 @@ const Chart = ({ symbol, timeframe, priceScale }) => {
                 textColor: '#333',
             },
             grid: {
-                vertLines: { color: '#f0f0f0' },
-                horzLines: { color: '#f0f0f0' },
+                vertLines: { visible: false }, // Remove vertical gridlines
+                horzLines: { visible: false }  // Remove horizontal gridlines
             },
             timeScale: {
                 timeVisible: true,

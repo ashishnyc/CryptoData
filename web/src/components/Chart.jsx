@@ -1,12 +1,12 @@
 import React, { useEffect, useRef } from 'react';
 import { createChart } from 'lightweight-charts';
 import { marketService } from '../services/api';
-import { useTheme } from '../ThemeContext';  // Add this import
+import { useTheme } from '../ThemeContext';
 
 const Chart = ({ symbol, timeframe, priceScale }) => {
     const chartContainerRef = useRef();
-    const chartRef = useRef(null);  // Add this to store chart instance
-    const { isDark } = useTheme();  // Get theme state
+    const chartRef = useRef(null);
+    const { isDark } = useTheme();
 
     useEffect(() => {
         const chart = createChart(chartContainerRef.current, {

@@ -28,8 +28,6 @@ a:hover {
 }
 
 body {
-  margin-left: 5%;
-  margin-right: 5%;
   place-items: center;
   min-width: 320px;
   min-height: 100vh;

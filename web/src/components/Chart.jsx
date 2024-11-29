@@ -1,27 +1,36 @@
 import React, { useEffect, useRef } from 'react';
 import { createChart } from 'lightweight-charts';
 import { marketService } from '../services/api';
+import { useTheme } from '../ThemeContext';  // Add this import
 
 const Chart = ({ symbol, timeframe, priceScale }) => {
     const chartContainerRef = useRef();
+    const chartRef = useRef(null);  // Add this to store chart instance
+    const { isDark } = useTheme();  // Get theme state
 
     useEffect(() => {
         const chart = createChart(chartContainerRef.current, {
             width: chartContainerRef.current.clientWidth,
             height: chartContainerRef.current.clientHeight,
             layout: {
-                background: { color: '#fafafa' },
-                textColor: '#333',
+                background: { type: 'solid', color: isDark ? '#1C2127' : '#ffffff' },
+                textColor: isDark ? '#9ca3af' : '#333333',
             },
             grid: {
-                vertLines: { visible: false }, // Remove vertical gridlines
-                horzLines: { visible: false }  // Remove horizontal gridlines
+                vertLines: { visible: false },
+                horzLines: { visible: false }
             },
             timeScale: {
                 timeVisible: true,
                 secondsVisible: true,
+                borderColor: isDark ? '#2D3748' : '#e2e8f0',
             },
+            rightPriceScale: {
+                borderColor: isDark ? '#2D3748' : '#e2e8f0',
+            }
         });
+
+        chartRef.current = chart;  // Store chart instance
 
         const candlestickSeries = chart.addCandlestickSeries({
             upColor: '#26a69a',
@@ -51,14 +60,13 @@ const Chart = ({ symbol, timeframe, priceScale }) => {
         const fetchData = async () => {
             try {
                 const data = await fetchSymbolData(symbol, timeframe);
-
                 if (!data || data.length === 0) {
                     console.error('No data received');
                     return;
                 }
 
                 const candlestickData = data.map(item => ({
-                    time: Math.floor(item.time), // Ensure we have integer timestamps
+                    time: Math.floor(item.time),
                     open: parseFloat(item.open),
                     high: parseFloat(item.high),
                     low: parseFloat(item.low),
@@ -66,14 +74,13 @@ const Chart = ({ symbol, timeframe, priceScale }) => {
                 }));
 
                 const volumeData = data.map(item => ({
-                    time: Math.floor(item.time), // Ensure we have integer timestamps
+                    time: Math.floor(item.time),
                     value: parseFloat(item.volume),
                     color: parseFloat(item.close) > parseFloat(item.open) ? '#26a69a' : '#ef5350',
                 }));
 
                 candlestickSeries.setData(candlestickData);
                 volumeSeries.setData(volumeData);
-
                 chart.timeScale().setVisibleLogicalRange({
                     from: candlestickData.length - 100,
                     to: candlestickData.length - 1
@@ -83,7 +90,6 @@ const Chart = ({ symbol, timeframe, priceScale }) => {
             }
         };
 
-        // Handle window resize
         const handleResize = () => {
             if (chartContainerRef.current) {
                 chart.applyOptions({
@@ -99,17 +105,37 @@ const Chart = ({ symbol, timeframe, priceScale }) => {
         return () => {
             window.removeEventListener('resize', handleResize);
             chart.remove();
+            chartRef.current = null;
         };
-    }, [symbol, timeframe]);
+    }, [symbol, timeframe, priceScale, isDark]);  // Add isDark to dependencies
+
+    // Update chart theme when isDark changes
+    useEffect(() => {
+        if (chartRef.current) {
+            chartRef.current.applyOptions({
+                layout: {
+                    background: { type: 'solid', color: isDark ? '#1C2127' : '#ffffff' },
+                    textColor: isDark ? '#9ca3af' : '#333333',
+                },
+                timeScale: {
+                    borderColor: isDark ? '#2D3748' : '#e2e8f0',
+                },
+                rightPriceScale: {
+                    borderColor: isDark ? '#2D3748' : '#e2e8f0',
+                }
+            });
+        }
+    }, [isDark]);
 
     return (
         <div
             ref={chartContainerRef}
-            className="h-96 bg-gray-50 rounded-lg shadow-sm"
+            className={`h-96 ${isDark ? 'bg-[#1C2127]' : 'bg-white'} rounded-lg shadow-sm`}
             style={{ minHeight: '400px' }}
         />
     );
 };
+
 const fetchSymbolData = async (symbol, timeframe) => {
     const data = await marketService.getKlineData(symbol, timeframe);
     return data;

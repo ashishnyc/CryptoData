@@ -257,5 +257,4 @@ pip-selfcheck.json
 .vscode/launch.json
 
 web/node_modules/
-testing_v2.py
-testing.py
+testing*

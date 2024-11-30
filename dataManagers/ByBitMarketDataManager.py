@@ -1,4 +1,4 @@
-from sqlmodel import and_, select, text, insert, SQLModel
+from sqlmodel import and_, select, text, insert, SQLModel, func
 from xchanges.ByBit import MarketData, Category, Interval, ContractType
 from database.models import Market
 from database.models.Market import Timeframe
@@ -219,6 +219,7 @@ class ByBitMarketDataManager:
 
     def download_linear_instruments_klines_to_db(
         self,
+        symbol: str = None,
         kline_date: date = None,
     ):
         downloaded_at = int(datetime.now().timestamp())
@@ -233,6 +234,8 @@ class ByBitMarketDataManager:
 
         instruments = self.get_current_linear_instruments("USDT")
         for instrument in instruments:
+            if symbol is not None and instrument.symbol != symbol:
+                continue
             if instrument.launch_time < int(end_time.timestamp()):
                 self.download_linear_instrument_symbol_klines_to_db(
                     symbol=instrument.symbol,
@@ -294,9 +297,11 @@ class ByBitMarketDataManager:
                 continue
         print(f"Total processed: {total_processed}")
 
-    def process_linear_instruments_klines(self, kline_date=None) -> None:
+    def process_linear_instruments_klines(self, symbol=None, kline_date=None) -> None:
         # Download klines if kline_date is provided
-        self.download_linear_instruments_klines_to_db(kline_date=kline_date)
+        self.download_linear_instruments_klines_to_db(
+            symbol=symbol, kline_date=kline_date
+        )
 
         start_time = time.time()
 
@@ -373,19 +378,31 @@ class ByBitMarketDataManager:
         target_table,
         freq_str,
         n_candles,
+        kline_date=None,
     ):
-        last_period_start_in_source = (
-            self.get_linear_instruments_klines_latest_period_start(
-                symbol=symbol, klines_table=target_table
+        if kline_date is None:
+            last_period_start_in_source = (
+                self.get_linear_instruments_klines_latest_period_start(
+                    symbol=symbol, klines_table=target_table
+                )
             )
-        )
-        query = select(source_table).where(
-            and_(
-                source_table.symbol == symbol,
-                source_table.period_start >= last_period_start_in_source,
+            query = select(source_table).where(
+                and_(
+                    source_table.symbol == symbol,
+                    source_table.period_start >= last_period_start_in_source,
+                )
             )
-        )
+        else:
+            query = select(source_table).where(
+                and_(
+                    source_table.symbol == symbol,
+                    func.date(source_table.period_start) == kline_date,
+                )
+            )
         df = pd.read_sql(query, self.dbClient.connection())
+        if df.shape[0] == 0:
+            print("No data to aggregate for symbol: ", symbol)
+            return
         df["period_start_grouped"] = df.period_start.dt.floor(freq=freq_str)
         df["n_candles"] = 1
         df_grouped = (
@@ -430,7 +447,7 @@ class ByBitMarketDataManager:
             self.dbClient.exec(stmt)
         self.dbClient.commit()
 
-    def aggregate_linear_instrument_klines_to_15m(self, symbol: str):
+    def aggregate_linear_instrument_klines_to_15m(self, symbol: str, kline_date=None):
         print("Aggregating 5m to 15m for symbol: ", symbol)
         tbl_5m = Market.ByBitLinearInstrumentsKline5m
         tbl_15m = Market.ByBitLinearInstrumentsKline15m
@@ -440,9 +457,10 @@ class ByBitMarketDataManager:
             target_table=tbl_15m,
             freq_str="15min",
             n_candles=3,
+            kline_date=kline_date,
         )
 
-    def aggregate_linear_instrument_klines_to_1h(self, symbol: str):
+    def aggregate_linear_instrument_klines_to_1h(self, symbol: str, kline_date=None):
         print("Aggregating 15m to 1h for symbol: ", symbol)
         tbl_15m = Market.ByBitLinearInstrumentsKline15m
         tbl_1h = Market.ByBitLinearInstrumentsKline1h
@@ -452,9 +470,10 @@ class ByBitMarketDataManager:
             target_table=tbl_1h,
             freq_str="1h",
             n_candles=4,
+            kline_date=kline_date,
         )
 
-    def aggregate_linear_instrument_klines_to_4h(self, symbol: str):
+    def aggregate_linear_instrument_klines_to_4h(self, symbol: str, kline_date=None):
         print("Aggregating 1h to 4h for symbol: ", symbol)
         tbl_1h = Market.ByBitLinearInstrumentsKline1h
         tbl_4h = Market.ByBitLinearInstrumentsKline4h
@@ -464,9 +483,10 @@ class ByBitMarketDataManager:
             target_table=tbl_4h,
             freq_str="4h",
             n_candles=4,
+            kline_date=kline_date,
         )
 
-    def aggregate_linear_instrument_klines_to_1d(self, symbol: str):
+    def aggregate_linear_instrument_klines_to_1d(self, symbol: str, kline_date=None):
         print("Aggregating 4h to 1d for symbol: ", symbol)
         tbl_4h = Market.ByBitLinearInstrumentsKline4h
         tbl_1d = Market.ByBitLinearInstrumentsKline1d
@@ -476,6 +496,7 @@ class ByBitMarketDataManager:
             target_table=tbl_1d,
             freq_str="D",
             n_candles=6,
+            kline_date=kline_date,
         )
 
     def get_linear_instruments_klines_latest_period_start(
@@ -497,19 +518,21 @@ class ByBitMarketDataManager:
             return datetime(1970, 1, 1)
         return value
 
-    def aggregate_linear_instrument_klines(
-        self,
-        symbol: str,
-    ) -> None:
-        self.aggregate_linear_instrument_klines_to_15m(symbol=symbol)
-        self.aggregate_linear_instrument_klines_to_1h(symbol=symbol)
-        self.aggregate_linear_instrument_klines_to_4h(symbol=symbol)
-        self.aggregate_linear_instrument_klines_to_1d(symbol=symbol)
+    def aggregate_linear_instrument_klines(self, symbol: str, kline_date=None) -> None:
+        self.aggregate_linear_instrument_klines_to_15m(
+            symbol=symbol, kline_date=kline_date
+        )
+        self.aggregate_linear_instrument_klines_to_1h(
+            symbol=symbol, kline_date=kline_date
+        )
+        self.aggregate_linear_instrument_klines_to_4h(
+            symbol=symbol, kline_date=kline_date
+        )
+        self.aggregate_linear_instrument_klines_to_1d(
+            symbol=symbol, kline_date=kline_date
+        )
 
-    def aggregate_linear_instruments_klines(
-        self,
-        symbol: str = None,
-    ) -> None:
+    def aggregate_linear_instruments_klines(self, kline_date=None, symbol=None) -> None:
         symbols_to_aggregate = []
         if symbol is not None:
             symbols_to_aggregate.append(symbol)
@@ -519,7 +542,9 @@ class ByBitMarketDataManager:
 
         for symbol in symbols_to_aggregate:
             print("Processing symbol: ", symbol)
-            self.aggregate_linear_instrument_klines(symbol=symbol)
+            self.aggregate_linear_instrument_klines(
+                symbol=symbol, kline_date=kline_date
+            )
 
     def get_missing_kline_periods(
         self,
@@ -566,7 +591,7 @@ class ByBitMarketDataManager:
         # If end_date not provided, use current time rounded down to nearest 5 minutes
         if not end_date:
             end_date = datetime.now().replace(second=0, microsecond=0)
-            end_date = end_date - timedelta(minutes=end_date.minute % 5)
+            end_date = end_date - timedelta(days=1)
 
         # Generate all expected 5-minute periods
         expected_periods = []
@@ -582,5 +607,5 @@ class ByBitMarketDataManager:
         missing_periods = [
             period for period in expected_periods if period not in existing_periods_set
         ]
-
-        return missing_periods
+        missing_dates = set([period.date() for period in missing_periods])
+        return missing_dates

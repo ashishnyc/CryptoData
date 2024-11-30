@@ -403,6 +403,7 @@ class ByBitMarketDataManager:
         if df.shape[0] == 0:
             print("No data to aggregate for symbol: ", symbol)
             return
+        df.sort_values(by="period_start", inplace=True)
         df["period_start_grouped"] = df.period_start.dt.floor(freq=freq_str)
         df["n_candles"] = 1
         df_grouped = (
@@ -442,7 +443,17 @@ class ByBitMarketDataManager:
                     volume=row["volume"],
                     turnover=row["turnover"],
                 )
-                .on_conflict_do_nothing(index_elements=["symbol", "period_start"])
+                .on_conflict_do_update(
+                    index_elements=["symbol", "period_start"],
+                    set_={
+                        "open_price": row["open_price"],
+                        "high_price": row["high_price"],
+                        "low_price": row["low_price"],
+                        "close_price": row["close_price"],
+                        "volume": row["volume"],
+                        "turnover": row["turnover"],
+                    },
+                )
             )
             self.dbClient.exec(stmt)
         self.dbClient.commit()

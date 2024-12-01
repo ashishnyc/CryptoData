@@ -1,7 +1,7 @@
 import React from 'react';
 import { DollarSign } from 'lucide-react';
 import ChartComponent from './components/ChartComponent';
-import ThemeToggle from './ThemeToggle';
+import ThemeToggle from './components/ThemeToggle';
 import TradingOpportunities from './components/TradingOpportunities';
 import { useThemeColors } from './hooks/useThemeColors';
 

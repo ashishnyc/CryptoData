@@ -13,6 +13,10 @@ export function ThemeProvider({ children }) {
         return false;
     });
 
+    const toggleTheme = () => {
+        setIsDark(prev => !prev);
+    };
+
     useEffect(() => {
         // Update class on document element
         if (isDark) {
@@ -25,7 +29,7 @@ export function ThemeProvider({ children }) {
     }, [isDark]);
 
     return (
-        <ThemeContext.Provider value={{ isDark, setIsDark }}>
+        <ThemeContext.Provider value={{ isDark, toggleTheme }}>
             {children}
         </ThemeContext.Provider>
     );

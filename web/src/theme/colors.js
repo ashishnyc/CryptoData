@@ -48,5 +48,15 @@ export const colors = {
             light: '#e2e8f0',
             dark: '#2D3748'
         }
+    },
+    icon: {
+        light: {
+            light: 'text-yellow-500 hover:text-yellow-400',
+            dark: 'text-yellow-400 hover:text-yellow-300'
+        },
+        dark: {
+            light: 'text-blue-500 hover:text-blue-400',
+            dark: 'text-blue-400 hover:text-blue-300'
+        }
     }
 };

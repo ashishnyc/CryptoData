@@ -1,29 +1,35 @@
-// ThemeToggle.jsx
 import React from 'react';
 import { Moon, Sun } from 'lucide-react';
 import { useTheme } from './contexts/ThemeContext';
+import { useThemeColors } from './hooks/useThemeColors';
 
 const ThemeToggle = () => {
-    const { isDark, setIsDark } = useTheme();
+    const { getColor } = useThemeColors();
+    const { isDark, toggleTheme } = useTheme();
+
+    const handleToggle = () => {
+        console.log('Current theme:', isDark ? 'dark' : 'light');
+        toggleTheme();
+        console.log('Theme after toggle:', !isDark ? 'dark' : 'light');
+    };
 
     return (
         <button
-            onClick={() => setIsDark(!isDark)}
+            onClick={handleToggle}
             className={`
                 flex items-center justify-center 
                 rounded-lg 
                 transition-colors
-                ${isDark
-                    ? 'bg-[#1C2127] border border-gray-800 hover:bg-[#2D3748]'
-                    : 'bg-white border border-gray-200 hover:bg-gray-100'
-                }
+                border 
+                ${getColor('border.primary')}
+                ${getColor('hover.background')}
+                ${getColor('background.secondary')}
             `}
-            aria-label="Toggle theme"
         >
             {isDark ? (
-                <Sun className="w-5 h-5 text-gray-400" />
+                <Sun className={`w-5 h-5 ${getColor('icon.light')}`} />
             ) : (
-                <Moon className="w-5 h-5 text-gray-600" />
+                <Moon className={`w-5 h-5 ${getColor('icon.dark')}`} />
             )}
         </button>
     );

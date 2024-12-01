@@ -1,11 +1,13 @@
 import React from 'react';
-import { useTheme } from '../ThemeContext';
+import { useTheme } from '../contexts/ThemeContext';
+import { useThemeColors } from '../hooks/useThemeColors';
 
 const TradingOpportunities = ({ opportunities }) => {
+    const { getColor } = useThemeColors();
     const { isDark } = useTheme();
 
     return (
-        <div className={`${isDark ? 'bg-[#1C2127]' : 'bg-white'} rounded-lg shadow-sm p-6 mb-6`}>
+        <div className={`${getColor('background.secondary')} rounded-lg shadow-sm p-6 mb-6`}>
             <h2 className={`text-2xl font-semibold ${isDark ? 'text-white' : 'text-gray-800'} mb-4`}>
                 Trading Opportunities
             </h2>
@@ -13,7 +15,7 @@ const TradingOpportunities = ({ opportunities }) => {
                 {opportunities.map((opp) => (
                     <div
                         key={opp.symbol}
-                        className={`${isDark ? 'bg-[#1C2127] border-gray-800' : 'bg-white border-gray-100'} 
+                        className={`${getColor('text.primary')}'} 
                             border rounded-lg p-4 transition-colors`}
                     >
                         <div className="flex items-center justify-between">

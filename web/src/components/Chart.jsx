@@ -1,36 +1,28 @@
 import React, { useEffect, useRef } from 'react';
 import { createChart } from 'lightweight-charts';
 import { marketService } from '../services/api';
-import { useTheme } from '../ThemeContext';
+import { useThemeColors } from '../hooks/useThemeColors';
+import { chartTheme } from '../theme/chartTheme';
 
 const Chart = ({ symbol, timeframe, priceScale }) => {
     const chartContainerRef = useRef();
     const chartRef = useRef(null);
-    const { isDark } = useTheme();
+    const { getColor } = useThemeColors();
 
     useEffect(() => {
+        if (!chartContainerRef.current) return;
+
         const chart = createChart(chartContainerRef.current, {
             width: chartContainerRef.current.clientWidth,
             height: chartContainerRef.current.clientHeight,
-            layout: {
-                background: { type: 'solid', color: isDark ? '#1C2127' : '#ffffff' },
-                textColor: isDark ? '#9ca3af' : '#333333',
-            },
+            ...chartTheme.getChartOptions(getColor),
             grid: {
                 vertLines: { visible: false },
                 horzLines: { visible: false }
-            },
-            timeScale: {
-                timeVisible: true,
-                secondsVisible: true,
-                borderColor: isDark ? '#2D3748' : '#e2e8f0',
-            },
-            rightPriceScale: {
-                borderColor: isDark ? '#2D3748' : '#e2e8f0',
             }
         });
 
-        chartRef.current = chart;  // Store chart instance
+        chartRef.current = chart;
 
         const candlestickSeries = chart.addCandlestickSeries({
             upColor: '#26a69a',
@@ -57,7 +49,7 @@ const Chart = ({ symbol, timeframe, priceScale }) => {
             },
         });
 
-        const fetchData = async () => {
+        const fetchAndUpdateData = async () => {
             try {
                 const data = await fetchSymbolData(symbol, timeframe);
                 if (!data || data.length === 0) {
@@ -76,11 +68,15 @@ const Chart = ({ symbol, timeframe, priceScale }) => {
                 const volumeData = data.map(item => ({
                     time: Math.floor(item.time),
                     value: parseFloat(item.volume),
-                    color: parseFloat(item.close) > parseFloat(item.open) ? '#26a69a' : '#ef5350',
+                    color: parseFloat(item.close) > parseFloat(item.open)
+                        ? '#26a69a'
+                        : '#ef5350',
                 }));
 
                 candlestickSeries.setData(candlestickData);
                 volumeSeries.setData(volumeData);
+
+                // Set visible range to last 100 candles
                 chart.timeScale().setVisibleLogicalRange({
                     from: candlestickData.length - 100,
                     to: candlestickData.length - 1
@@ -91,8 +87,8 @@ const Chart = ({ symbol, timeframe, priceScale }) => {
         };
 
         const handleResize = () => {
-            if (chartContainerRef.current) {
-                chart.applyOptions({
+            if (chartContainerRef.current && chartRef.current) {
+                chartRef.current.applyOptions({
                     width: chartContainerRef.current.clientWidth,
                     height: chartContainerRef.current.clientHeight,
                 });
@@ -100,37 +96,29 @@ const Chart = ({ symbol, timeframe, priceScale }) => {
         };
 
         window.addEventListener('resize', handleResize);
-        fetchData();
+        fetchAndUpdateData();
 
+        // Cleanup function
         return () => {
             window.removeEventListener('resize', handleResize);
-            chart.remove();
-            chartRef.current = null;
+            if (chartRef.current) {
+                chartRef.current.remove();
+                chartRef.current = null;
+            }
         };
-    }, [symbol, timeframe, priceScale, isDark]);  // Add isDark to dependencies
+    }, [symbol, timeframe, priceScale, getColor]);
 
-    // Update chart theme when isDark changes
+    // Update chart theme when theme changes
     useEffect(() => {
         if (chartRef.current) {
-            chartRef.current.applyOptions({
-                layout: {
-                    background: { type: 'solid', color: isDark ? '#1C2127' : '#ffffff' },
-                    textColor: isDark ? '#9ca3af' : '#333333',
-                },
-                timeScale: {
-                    borderColor: isDark ? '#2D3748' : '#e2e8f0',
-                },
-                rightPriceScale: {
-                    borderColor: isDark ? '#2D3748' : '#e2e8f0',
-                }
-            });
+            chartRef.current.applyOptions(chartTheme.getChartOptions(getColor));
         }
-    }, [isDark]);
+    }, [getColor]);
 
     return (
         <div
             ref={chartContainerRef}
-            className={`h-96 ${isDark ? 'bg-[#1C2127]' : 'bg-white'} rounded-lg shadow-sm`}
+            className={`h-96 ${getColor('background.primary')}`}
             style={{ minHeight: '400px' }}
         />
     );

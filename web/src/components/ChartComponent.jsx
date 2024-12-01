@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Chart from './Chart';
 import Select from 'react-select';
 import { marketService } from '../services/api';
-import { useTheme } from '../ThemeContext';
+import { useTheme } from '../contexts/ThemeContext';
 
 const ChartComponent = () => {
     const { isDark } = useTheme();

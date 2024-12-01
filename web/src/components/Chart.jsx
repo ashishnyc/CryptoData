@@ -7,11 +7,19 @@ import { chartTheme } from '../theme/chartTheme';
 const Chart = ({ symbol, timeframe, priceScale }) => {
     const chartContainerRef = useRef();
     const chartRef = useRef(null);
+    const candlestickSeriesRef = useRef(null);
+    const volumeSeriesRef = useRef(null);
+    const isMounted = useRef(true);
     const { getColor } = useThemeColors();
 
+    // Initialize chart
     useEffect(() => {
         if (!chartContainerRef.current) return;
 
+        // Set mounted flag
+        isMounted.current = true;
+
+        // Create chart instance
         const chart = createChart(chartContainerRef.current, {
             width: chartContainerRef.current.clientWidth,
             height: chartContainerRef.current.clientHeight,
@@ -24,7 +32,8 @@ const Chart = ({ symbol, timeframe, priceScale }) => {
 
         chartRef.current = chart;
 
-        const candlestickSeries = chart.addCandlestickSeries({
+        // Create series
+        candlestickSeriesRef.current = chart.addCandlestickSeries({
             upColor: '#26a69a',
             downColor: '#ef5350',
             borderVisible: false,
@@ -36,7 +45,7 @@ const Chart = ({ symbol, timeframe, priceScale }) => {
             },
         });
 
-        const volumeSeries = chart.addHistogramSeries({
+        volumeSeriesRef.current = chart.addHistogramSeries({
             color: '#26a69a',
             priceFormat: { type: 'volume' },
             priceScaleId: 'volume',
@@ -49,11 +58,41 @@ const Chart = ({ symbol, timeframe, priceScale }) => {
             },
         });
 
+        // Handle resize
+        const handleResize = () => {
+            if (chartContainerRef.current && chartRef.current) {
+                chartRef.current.applyOptions({
+                    width: chartContainerRef.current.clientWidth,
+                    height: chartContainerRef.current.clientHeight,
+                });
+            }
+        };
+
+        window.addEventListener('resize', handleResize);
+
+        // Cleanup function
+        return () => {
+            isMounted.current = false;
+            window.removeEventListener('resize', handleResize);
+            if (chartRef.current) {
+                chartRef.current.remove();
+                chartRef.current = null;
+                candlestickSeriesRef.current = null;
+                volumeSeriesRef.current = null;
+            }
+        };
+    }, [getColor, priceScale]); // Only recreate chart when these change
+
+    // Fetch and update data
+    useEffect(() => {
         const fetchAndUpdateData = async () => {
+            if (!chartRef.current || !isMounted.current) return;
+
             try {
                 const data = await fetchSymbolData(symbol, timeframe);
-                if (!data || data.length === 0) {
-                    console.error('No data received');
+
+                if (!data || data.length === 0 || !isMounted.current) {
+                    console.warn('No data received or component unmounted');
                     return;
                 }
 
@@ -73,42 +112,25 @@ const Chart = ({ symbol, timeframe, priceScale }) => {
                         : '#ef5350',
                 }));
 
-                candlestickSeries.setData(candlestickData);
-                volumeSeries.setData(volumeData);
+                if (candlestickSeriesRef.current && volumeSeriesRef.current && isMounted.current) {
+                    candlestickSeriesRef.current.setData(candlestickData);
+                    volumeSeriesRef.current.setData(volumeData);
 
-                // Set visible range to last 100 candles
-                chart.timeScale().setVisibleLogicalRange({
-                    from: candlestickData.length - 100,
-                    to: candlestickData.length - 1
-                });
+                    // Set visible range to last 100 candles
+                    chartRef.current.timeScale().setVisibleLogicalRange({
+                        from: candlestickData.length - 100,
+                        to: candlestickData.length - 1
+                    });
+                }
             } catch (error) {
                 console.error('Error fetching or processing data:', error);
             }
         };
 
-        const handleResize = () => {
-            if (chartContainerRef.current && chartRef.current) {
-                chartRef.current.applyOptions({
-                    width: chartContainerRef.current.clientWidth,
-                    height: chartContainerRef.current.clientHeight,
-                });
-            }
-        };
-
-        window.addEventListener('resize', handleResize);
         fetchAndUpdateData();
+    }, [symbol, timeframe]);
 
-        // Cleanup function
-        return () => {
-            window.removeEventListener('resize', handleResize);
-            if (chartRef.current) {
-                chartRef.current.remove();
-                chartRef.current = null;
-            }
-        };
-    }, [symbol, timeframe, priceScale, getColor]);
-
-    // Update chart theme when theme changes
+    // Update chart theme
     useEffect(() => {
         if (chartRef.current) {
             chartRef.current.applyOptions(chartTheme.getChartOptions(getColor));

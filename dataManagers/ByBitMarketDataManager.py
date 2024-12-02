@@ -203,6 +203,7 @@ class ByBitMarketDataManager:
         }
         klines = self.client.fetch_kline(**params)
         for kline in klines:
+            print(kline)
             new_kline = Market.ByBitLinearInstrumentsKline5mRaw()
             new_kline.downloaded_at = download_ts
             new_kline.symbol = symbol
@@ -223,11 +224,11 @@ class ByBitMarketDataManager:
         kline_date: date = None,
     ):
         downloaded_at = int(datetime.now().timestamp())
-        # if kline_date is None then fetch last 5 mins
+        # if kline_date is None then fetch last 15 mins (just for making sure we have the latest data)
         if kline_date is None:
             current_time = datetime.now()
             end_time = current_time
-            start_time = current_time - timedelta(minutes=5)
+            start_time = current_time - timedelta(minutes=15)
         else:
             start_time = datetime.combine(kline_date, datetime.min.time())
             end_time = start_time + timedelta(days=1) - timedelta(seconds=1)
@@ -320,8 +321,14 @@ class ByBitMarketDataManager:
             CAST(turnover AS DECIMAL(38,8))
         FROM {Market.ByBitLinearInstrumentsKline5mRaw.__tablename__}
         WHERE is_processed = FALSE
-        ON CONFLICT (symbol, period_start) DO NOTHING
-        RETURNING 1;
+        ON CONFLICT (symbol, period_start)
+        DO UPDATE SET
+            open_price = EXCLUDED.open_price,
+            high_price = EXCLUDED.high_price,
+            low_price = EXCLUDED.low_price,
+            close_price = EXCLUDED.close_price,
+            volume = EXCLUDED.volume,
+            turnover = EXCLUDED.turnover
         """
 
         # Update processed status

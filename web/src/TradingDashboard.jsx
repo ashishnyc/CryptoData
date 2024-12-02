@@ -12,14 +12,13 @@ const TradingDashboard = () => {
     ];
 
     return (
-        <div className={`flex h-screen n  ${getColor('background.primary')}`}>
+        <div className={`flex h-screen  ${getColor('background.primary')}`}>
             <main className={`flex-1 transition-all duration-300 ease-in-out transform`}>
                 <div className="p-6">
                     <div className="flex justify-between items-center mb-8">
                         <h1 className={`text-2xl font-bold ${getColor('text.primary')}`}>
                             Trading Dashboard
                         </h1>
-                        <ThemeToggle />
                     </div>
                     <div className="rounded-lg p-4 mb-6">
                         <ChartComponent />

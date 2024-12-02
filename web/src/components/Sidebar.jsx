@@ -47,7 +47,6 @@ const Sidebar = () => {
                 <div className={`flex flex-col items-center mt-3 border-t ${getColor('border.primary')}`}>
                     {menuItems.map((item) => {
                         const isActive = isPathActive(item.path);
-                        console.log(isActive, item.path);
                         return (
                             <Link
                                 key={item.id}

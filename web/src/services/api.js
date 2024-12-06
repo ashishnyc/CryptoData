@@ -37,5 +37,46 @@ export const marketService = {
             console.error('Error in getSymbols:', error);
             return {};
         }
+    },
+
+    getSymbolsInfo: async () => {
+        try {
+            const response = await api.get('/symbols/info');
+            const symbolsInfoMap = response.data.reduce((acc, {
+                symbol,
+                time,
+                current_price,
+                change_5m_pct,
+                change_15m_pct,
+                change_1h_pct,
+                change_4h_pct,
+                change_1d_pct,
+                turnover_5m,
+                turnover_15m,
+                turnover_1h,
+                turnover_4h,
+                turnover_1d
+            }) => {
+                acc[symbol] = {
+                    time,
+                    current_price,
+                    change_5m_pct,
+                    change_15m_pct,
+                    change_1h_pct,
+                    change_4h_pct,
+                    change_1d_pct,
+                    turnover_5m,
+                    turnover_15m,
+                    turnover_1h,
+                    turnover_4h,
+                    turnover_1d
+                };
+                return acc;
+            }, {});
+            return symbolsInfoMap;
+        } catch (error) {
+            console.error('Error in getSymbolsInfo:', error);
+            return {};
+        }
     }
 };

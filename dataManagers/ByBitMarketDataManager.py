@@ -1,4 +1,8 @@
-from sqlmodel import and_, select, text, insert, SQLModel, func
+import asyncio
+from collections import defaultdict
+from decimal import Decimal
+import json
+from sqlmodel import Session, and_, select, text, insert, SQLModel, func
 from xchanges.ByBit import MarketData, Category, Interval, ContractType
 from database.models import Market
 from database.models.Market import Timeframe
@@ -6,8 +10,214 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from database import Operations as dbOperations
 from datetime import datetime, date, timedelta
 import time
-from typing import Optional
+from typing import Any, Dict, Optional
 import pandas as pd
+from redis import ConnectionPool, Redis
+from sqlmodel.ext.asyncio.session import AsyncSession
+
+
+class ByBitDataIngestion:
+    def __init__(
+        self, testnet: bool = False, api_key: str = None, api_secret: str = None
+    ) -> None:
+        self.dbClient = dbOperations.get_session()
+        self.client = MarketData(
+            testnet=testnet, api_key=api_key, api_secret=api_secret
+        )
+
+        self.default_interval = Interval._5_MIN
+        self.quote_coin = "USDT"
+        self.instrument_status = "Trading"
+        self.bb_data_service = ByBitDataService(dbClient=self.dbClient)
+
+    def download_linear_usdt_instruments(self, limit=1000):
+        # Fetch ByBit instruments
+        bb_instruments = self.client.fetch_instruments(
+            category=Category.LINEAR,
+            status=self.instrument_status,
+            limit=limit,
+        )
+        bb_instruments_map = {
+            instrument["symbol"]: instrument for instrument in bb_instruments
+        }
+        # Fetch Database Instruments
+        db_instruments = self.bb_data_service.get_linear_usdt_instruments(
+            quote_coin=self.quote_coin
+        )
+        db_instruments_map = {
+            instrument.symbol: instrument for instrument in db_instruments
+        }
+
+        inserts, updates, deletes = 0, 0, 0
+        for bb_symbol, bb_instrument in bb_instruments_map.items():
+            current_instrument = self._convert_xchange_instruments_dict(bb_instrument)
+            # Skip if not USDT
+            if current_instrument.quote_coin != self.quote_coin:
+                continue
+            existing_instrument = db_instruments_map.get(bb_symbol)
+            if existing_instrument:
+                if not existing_instrument.is_equal(current_instrument):
+                    updates += 1
+                    self.dbClient.add(existing_instrument)
+            else:
+                self.dbClient.add(current_instrument)
+                inserts += 1
+
+        for db_symbol, db_instrument in db_instruments_map.items():
+            if db_symbol not in bb_instruments_map:
+                self.dbClient.delete(db_instrument)
+                deletes += 1
+        self.dbClient.commit()
+        print(
+            f"Processed linear USDT instruments: {inserts} inserts, {updates} updates, {deletes} deletes"
+        )
+        return (inserts, updates, deletes)
+
+    def _convert_xchange_instruments_dict(
+        self, xchange_dict
+    ) -> Market.ByBitLinearInstruments:
+        bb = Market.ByBitLinearInstruments()
+        bb.set_symbol(xchange_dict["symbol"])
+        bb.set_base_coin(xchange_dict["baseCoin"])
+        bb.set_quote_coin(xchange_dict["quoteCoin"])
+        bb.set_launch_time(xchange_dict["launchTime"])
+        bb.set_price_scale(xchange_dict["priceScale"])
+        bb.set_funding_interval(xchange_dict["fundingInterval"])
+        bb.set_min_leverage(xchange_dict["leverageFilter"]["minLeverage"])
+        bb.set_max_leverage(xchange_dict["leverageFilter"]["maxLeverage"])
+        bb.set_leverage_step(xchange_dict["leverageFilter"]["leverageStep"])
+        bb.set_max_trading_qty(xchange_dict["lotSizeFilter"]["maxOrderQty"])
+        bb.set_min_trading_qty(xchange_dict["lotSizeFilter"]["minOrderQty"])
+        bb.set_qty_step(xchange_dict["lotSizeFilter"]["qtyStep"])
+        bb.set_min_price(xchange_dict["priceFilter"]["minPrice"])
+        bb.set_max_price(xchange_dict["priceFilter"]["maxPrice"])
+        bb.set_tick_size(xchange_dict["priceFilter"]["tickSize"])
+        return bb
+
+
+class ByBitDataService:
+    def __init__(self, dbClient=None):
+        self.dbClient = self._get_dbClient(dbClient)
+        self.redis_client = Redis(connection_pool=self._redis_connection_pool())
+        self.default_client = "redis"
+
+    def _get_dbClient(self, dbClient):
+        if dbClient is not None:
+            return dbClient
+        return dbOperations.get_session()
+
+    def _redis_connection_pool(self):
+        return ConnectionPool(
+            host="localhost",
+            port=6379,
+            db=0,
+            decode_responses=True,
+            socket_timeout=10,
+            socket_connect_timeout=10,
+            retry_on_timeout=True,
+            max_connections=20,
+        )
+
+    def _get_kline_table(self, timeframe: str):
+        if timeframe == "5m":
+            return Market.ByBitLinearInstrumentsKline5m
+        elif timeframe == "15m":
+            return Market.ByBitLinearInstrumentsKline15m
+        elif timeframe == "1h":
+            return Market.ByBitLinearInstrumentsKline1h
+        elif timeframe == "4h":
+            return Market.ByBitLinearInstrumentsKline4h
+        elif timeframe == "1d":
+            return Market.ByBitLinearInstrumentsKline1d
+
+    def get_linear_usdt_instruments(
+        self, quote_coin="USDT", data_source: str = "redis"
+    ):
+        tbl = Market.ByBitLinearInstruments
+        stmt = select(tbl).where(tbl.quote_coin == quote_coin)
+        return self.dbClient.exec(stmt).all()
+
+    def _deserialize_kline(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            "symbol": data["symbol"],
+            "period_start": datetime.fromtimestamp(data["period_start"]),
+            "open_price": Decimal(data["open_price"]),
+            "high_price": Decimal(data["high_price"]),
+            "low_price": Decimal(data["low_price"]),
+            "close_price": Decimal(data["close_price"]),
+            "volume": Decimal(data["volume"]),
+            "turnover": Decimal(data["turnover"]),
+        }
+
+    def _retrive_linear_instrument_klines_from_redis(
+        self,
+        symbol: str,
+        timeframe: str,
+        start_time: datetime = None,
+        end_time: datetime = None,
+    ):
+        if start_time is None:
+            start_time = datetime(1970, 1, 1)
+        if end_time is None:
+            end_time = datetime.now()
+
+        start_time = int(start_time.timestamp())
+        end_time = int(end_time.timestamp())
+        pattern = f"bybit:kline:{timeframe}:{symbol}:*"
+
+        keys = []
+        for key in self.redis_client.scan_iter(pattern, 10000):
+            current_time = int(key.split(":")[-1])
+            if current_time > start_time and current_time <= end_time:
+                keys.append(key)
+
+        if keys:
+            pipeline = self.redis_client.pipeline()
+            for key in keys:
+                pipeline.get(key)
+            values = pipeline.execute()
+            return sorted(
+                [self._deserialize_kline(json.loads(v)) for v in values if v],
+                key=lambda x: x["period_start"],
+            )
+
+    def _retrive_linear_instrument_klines_from_db(
+        self,
+        symbol: str,
+        timeframe: str,
+        start_time: datetime = None,
+        end_time: datetime = None,
+    ):
+        tbl = self._get_kline_table(timeframe)
+        stmt = select(tbl).where(tbl.symbol == symbol)
+        if start_time is not None:
+            stmt = stmt.where(tbl.period_start >= start_time)
+        if end_time is not None:
+            stmt = stmt.where(tbl.period_start <= end_time)
+        return self.dbClient.exec(stmt).all()
+
+    def get_linear_instrument_klines(
+        self,
+        symbol: str,
+        timeframe: str,
+        start_time: datetime = None,
+        end_time: datetime = None,
+        data_source: str = "redis",
+    ):
+        if data_source == "redis":
+            return self._retrive_linear_instrument_klines_from_redis(
+                symbol=symbol,
+                timeframe=timeframe,
+                start_time=start_time,
+                end_time=end_time,
+            )
+
+        return self._retrive_linear_instrument_klines_from_db(
+            symbol=symbol,
+            timeframe=timeframe,
+            start_time=start_time,
+            end_time=end_time,
+        )
 
 
 class ByBitMarketDataManager:
@@ -627,3 +837,117 @@ class ByBitMarketDataManager:
         ]
         missing_dates = set([period.date() for period in missing_periods])
         return missing_dates
+
+
+class ByBitKlineCache:
+    def __init__(
+        self, redis_client: Redis, refresh_interval: int = 300, max_age_hours: int = 24
+    ):
+        self.redis_client = redis_client
+        self.refresh_interval = refresh_interval
+        self.max_age_hours = max_age_hours
+
+        # Aditional Initialization
+        self.background_task = None
+        self.is_running = False
+        self._last_updates = defaultdict(lambda: datetime.min)
+
+    def get_cache_key(self, symbol: str, period_start: datetime, tf: str = "5m") -> str:
+        return f"bybit:kline:{tf}:{symbol}:{int(period_start.timestamp())}"
+
+    def serialize_kline(self, kline) -> Dict[str, Any]:
+        return {
+            "symbol": kline.symbol,
+            "period_start": kline.period_start.timestamp(),
+            "open_price": str(kline.open_price),
+            "high_price": str(kline.high_price),
+            "low_price": str(kline.low_price),
+            "close_price": str(kline.close_price),
+            "volume": str(kline.volume),
+            "turnover": str(kline.turnover),
+        }
+
+    def deserialize_kline(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            "symbol": data["symbol"],
+            "period_start": datetime.fromtimestamp(data["period_start"]),
+            "open_price": Decimal(data["open_price"]),
+            "high_price": Decimal(data["high_price"]),
+            "low_price": Decimal(data["low_price"]),
+            "close_price": Decimal(data["close_price"]),
+            "volume": Decimal(data["volume"]),
+            "turnover": Decimal(data["turnover"]),
+        }
+
+    async def start_background_refresh(self, engine):
+        if self.is_running:
+            return
+        self.is_running = True
+        self.background_task = asyncio.create_task(
+            self._background_refresh_loop(engine)
+        )
+
+    async def stop_background_refresh(self):
+        if self.background_task:
+            self.background_task.cancel()
+            self.is_running = False
+            try:
+                await self.background_task
+            except asyncio.CancelledError:
+                pass
+
+    async def _background_refresh_loop(self, engine):
+        while self.is_running:
+            try:
+                async with AsyncSession(engine) as session:
+                    tbl = Market.ByBitLinearInstruments
+                    query = select(tbl.symbol).where(tbl.quote_coin == "USDT")
+                    symbols = (await session.exec(query)).all()
+                    symbols = ["BTCUSDT"]
+                    for symbol in symbols:
+                        await self._refresh_symbol_data(session, symbol)
+            except Exception as e:
+                print(f"Error during background refresh: {e}")
+                await asyncio.sleep(10)
+
+    async def _refresh_symbol_data(self, session, symbol: str):
+        now = datetime.now()
+        if (now - self._last_updates[symbol]).total_seconds() < self.refresh_interval:
+            return
+
+        tbl = Market.ByBitLinearInstrumentsKline5m
+        query = (
+            select(tbl).where(tbl.symbol == symbol)
+            # .where(tbl.period_start >= (now - timedelta(days=14)))
+        )
+        klines = (await session.exec(query)).all()
+        if not klines:
+            return
+
+        pipeline = self.redis_client.pipeline()
+        for kline in klines:
+            serialized_kline = self.serialize_kline(kline)
+            key_5m = self.get_cache_key(kline.symbol, kline.period_start)
+            pipeline.set(key_5m, json.dumps(serialized_kline))
+
+        pipeline.execute()
+
+        self._last_updates[symbol] = now
+
+    def get_kline(self, symbol: str, tf: str = "5m") -> Dict[str, Any]:
+        pattern = f"bybit:kline:{tf}:{symbol}:*"
+        keys = []
+
+        for key in self.redis_client.scan_iter(pattern, 1000):
+            keys.append(key)
+
+        if keys:
+            pipeline = self.redis_client.pipeline()
+            for key in keys:
+                pipeline.get(key)
+            values = pipeline.execute()
+            return sorted(
+                [self.deserialize_kline(json.loads(v)) for v in values if v],
+                key=lambda x: x["period_start"],
+            )
+        return []

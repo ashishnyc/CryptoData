@@ -35,6 +35,21 @@ services:
     networks:
       - internal-network
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - internal-network
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes --appendfsync everysec --save "" --dir /data
+    user: redis  # Using redis user instead of UID/GID
+
+volumes:
+  redis-data:
+    driver: local
+
 # Define a custom internal network
 networks:
   internal-network:

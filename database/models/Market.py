@@ -34,6 +34,118 @@ class ByBitLinearInstruments(SQLModel, table=True):
     max_price: Decimal
     tick_size: Decimal
 
+    def set_symbol(self, value: str):
+        self.symbol = value
+
+    def set_base_coin(self, value: str):
+        self.base_coin = value
+
+    def set_quote_coin(self, value: str):
+        self.quote_coin = value
+
+    def set_launch_time(self, value: str):
+        try:
+            self.launch_time = int(value) / 1000
+        except:
+            print(f"Error converting launch time: {value}")
+            self.launch_time = None
+
+    def set_price_scale(self, value: str):
+        try:
+            self.price_scale = int(value)
+        except:
+            print(f"Error converting price scale: {value}")
+            self.price_scale = None
+
+    def set_funding_interval(self, value: str):
+        try:
+            self.funding_interval = int(value)
+        except:
+            print(f"Error converting funding interval: {value}")
+            self.funding_interval = None
+
+    def set_min_leverage(self, value: str):
+        try:
+            self.min_leverage = Decimal(value)
+        except:
+            print(f"Error converting min leverage: {value}")
+            self.min_leverage = None
+
+    def set_max_leverage(self, value: str):
+        try:
+            self.max_leverage = Decimal(value)
+        except:
+            print(f"Error converting max leverage: {value}")
+            self.max_leverage = None
+
+    def set_leverage_step(self, value: str):
+        try:
+            self.leverage_step = Decimal(value)
+        except:
+            print(f"Error converting leverage step: {value}")
+            self.leverage_step = None
+
+    def set_max_trading_qty(self, value: str):
+        try:
+            self.max_trading_qty = Decimal(value)
+        except:
+            print(f"Error converting max trading qty: {value}")
+            self.max_trading_qty = None
+
+    def set_min_trading_qty(self, value: str):
+        try:
+            self.min_trading_qty = Decimal(value)
+        except:
+            print(f"Error converting min trading qty: {value}")
+            self.min_trading_qty = None
+
+    def set_qty_step(self, value: str):
+        try:
+            self.qty_step = Decimal(value)
+        except:
+            print(f"Error converting qty step: {value}")
+            self.qty_step = None
+
+    def set_min_price(self, value: str):
+        try:
+            self.min_price = Decimal(value)
+        except:
+            print(f"Error converting min price: {value}")
+            self.min_price = None
+
+    def set_max_price(self, value: str):
+        try:
+            self.max_price = Decimal(value)
+        except:
+            print(f"Error converting max price: {value}")
+            self.max_price = None
+
+    def set_tick_size(self, value: str):
+        try:
+            self.tick_size = Decimal(value)
+        except:
+            print(f"Error converting tick size: {value}")
+            self.tick_size = None
+
+    def is_equal(self, other):
+        return (
+            self.symbol == other.symbol
+            and self.base_coin == other.base_coin
+            and self.quote_coin == other.quote_coin
+            and self.launch_time == other.launch_time
+            and self.price_scale == other.price_scale
+            and self.funding_interval == other.funding_interval
+            and self.min_leverage.compare(other.min_leverage) == Decimal("0")
+            and self.max_leverage.compare(other.max_leverage) == Decimal("0")
+            and self.leverage_step.compare(other.leverage_step) == Decimal("0")
+            and self.max_trading_qty.compare(other.max_trading_qty) == Decimal("0")
+            and self.min_trading_qty.compare(other.min_trading_qty) == Decimal("0")
+            and self.qty_step.compare(other.qty_step) == Decimal("0")
+            and self.min_price.compare(other.min_price) == Decimal("0")
+            and self.max_price.compare(other.max_price) == Decimal("0")
+            and self.tick_size.compare(other.tick_size) == Decimal("0")
+        )
+
 
 class ByBitInstrumentsRaw(SQLModel, table=True):
     __tablename__ = "bybit_instruments_raw"

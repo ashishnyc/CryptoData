@@ -43,12 +43,18 @@ class MarketData:
     def fetch_instruments(
         self,
         category: Category,
+        status: Optional[str] = None,
+        baseCoin: Optional[str] = None,
         limit: Optional[int] = None,
     ) -> List[Dict]:
         """Fetch instruments for a specific category"""
         params = {"category": category.value}
         if limit:
             params["limit"] = limit
+        if status:
+            params["status"] = status
+        if baseCoin:
+            params["base"] = baseCoin
 
         try:
             response = self.session.get_instruments_info(**params)

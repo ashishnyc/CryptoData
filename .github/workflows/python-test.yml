@@ -46,29 +46,28 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pytest
-        pip install pytest-cov
-        pip install pytest-asyncio
-        pip install pytest-env
+        pip install pytest pytest-cov pytest-asyncio pytest-env
         pip install numpy==1.24.3
         pip install -r requirements.txt
-        pip list  # List installed packages for debugging
+
+    - name: Create test env file
+      run: |
+        echo "BYBIT_API_KEY=test_key" > .env.test
+        echo "BYBIT_API_SECRET=test_secret" >> .env.test
+        echo "BYBIT_TESTNET=true" >> .env.test
+        echo "DB_CONNECTION_STRING=postgresql://postgres:postgres@localhost:5432/test_db" >> .env.test
+        echo "BETTER_STACK_SOURCE_TOKEN=test_token" >> .env.test
+        cat .env.test # Print for debugging
 
     - name: Run tests with pytest
       env:
-        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
-        REDIS_URL: redis://localhost:6379/0
         BYBIT_API_KEY: test_key
         BYBIT_API_SECRET: test_secret
         BYBIT_TESTNET: "true"
+        DB_CONNECTION_STRING: postgresql://postgres:postgres@localhost:5432/test_db
         BETTER_STACK_SOURCE_TOKEN: test_token
-        PYTEST_DISABLE_PLUGIN_AUTOLOAD: true
       run: |
-        pytest tests/ -v
-    
-    - name: Generate coverage report
-      run: |
-        pytest --cov=. --cov-report=xml tests/
+        pytest tests/ -v --cov=. --cov-report=xml
     
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v2

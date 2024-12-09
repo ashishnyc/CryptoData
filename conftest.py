@@ -3,6 +3,22 @@ from unittest.mock import Mock, patch
 
 
 @pytest.fixture(autouse=True)
+def mock_settings():
+    """Mock settings for all tests"""
+    mock_settings = Mock()
+    mock_settings.bybit_api_key = "test_key"
+    mock_settings.bybit_api_secret = "test_secret"
+    mock_settings.bybit_testnet = True
+    mock_settings.db_connection_string = (
+        "postgresql://postgres:postgres@localhost:5432/test_db"
+    )
+    mock_settings.better_stack_source_token = "test_token"
+
+    with patch("Config.settings", mock_settings):
+        yield mock_settings
+
+
+@pytest.fixture(autouse=True)
 def mock_db_operations():
     """Mock database operations for all tests"""
     with patch("database.Operations.get_session") as mock:

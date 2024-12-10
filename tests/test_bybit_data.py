@@ -9,18 +9,12 @@ from xchanges.ByBit import Category
 
 class TestByBitDataIngestion:
     @pytest.fixture
-    def data_ingestion(self):
-        """Create ByBitDataIngestion instance with mocked dependencies"""
-        with patch("xchanges.ByBit.MarketData") as mock_market_data:
-            with patch("database.Operations.get_session") as mock_db:
-                instance = ByBitDataIngestion(testnet=True)
-                # Replace the real client with a mock
-                instance.client = mock_market_data.return_value
-                # Replace the real db client with a mock
-                instance.dbClient = mock_db.return_value
-                # Replace the bb_data_service with a mock
-                instance.bb_data_service = Mock()
-                return instance
+    def data_ingestion(self, mock_market_data, mock_db_operations):
+        instance = ByBitDataIngestion(testnet=True)
+        instance.client = mock_market_data.return_value
+        instance.dbClient = mock_db_operations.return_value
+        instance.bb_data_service = Mock()
+        return instance
 
     def test_download_linear_usdt_instruments(self, data_ingestion):
         """Test downloading new instruments when none exist"""
@@ -129,11 +123,8 @@ class TestByBitDataIngestion:
 
 class TestByBitDataService:
     @pytest.fixture
-    def data_service(self):
-        """Create ByBitDataService instance with mocked dependencies"""
-        with patch("database.Operations.get_session") as mock_db:
-            with patch("redis.Redis") as mock_redis:
-                return ByBitDataService(dbClient=mock_db.return_value)
+    def data_service(self, mock_db_operations, mock_redis):
+        return ByBitDataService(dbClient=mock_db_operations.return_value)
 
     def test_get_linear_usdt_instruments(self, data_service):
         mock_instruments = [

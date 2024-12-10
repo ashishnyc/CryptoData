@@ -36,17 +36,17 @@ jobs:
           --health-retries 5
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     
     - name: Set up Python 3.10
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: '3.10'
     
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pytest pytest-asyncio pytest-env
+        pip install pytest pytest-asyncio pytest-env pytest-cov
         pip install numpy==1.24.3
         pip install -r requirements.txt
 
@@ -58,7 +58,7 @@ jobs:
         echo "DB_CONNECTION_STRING=postgresql://postgres:postgres@localhost:5432/test_db" >> .env.test
         echo "BETTER_STACK_SOURCE_TOKEN=test_token" >> .env.test
 
-    - name: Run tests with pytest
+    - name: Run tests with pytest and coverage
       env:
         BYBIT_API_KEY: test_key
         BYBIT_API_SECRET: test_secret
@@ -66,4 +66,9 @@ jobs:
         DB_CONNECTION_STRING: postgresql://postgres:postgres@localhost:5432/test_db
         BETTER_STACK_SOURCE_TOKEN: test_token
       run: |
-        pytest tests/ -v
+        pytest tests/ -v --cov=. --cov-report=xml --cov-report=term
+
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v3
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

@@ -1,0 +1,19 @@
+coverage:
+  status:
+    project:
+      default:
+        # basic
+        target: 70% # the required coverage value
+        threshold: 1% # the leniency in hitting the target
+    patch:
+      default:
+        target: 70%
+
+ignore:
+  - "tests/**/*"
+  - "setup.py"
+
+comment:
+  layout: "reach, diff, flags, files"
+  behavior: default
+  require_changes: false

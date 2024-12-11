@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     bybit_api_secret: str
     bybit_testnet: bool
     db_connection_string: str
-    better_stack_source_token: str
+    better_stack_source_token: str = "abc"
     num_of_orders_near_current_price: int = 10
     download_dir: str = os.path.join(os.getcwd(), "downloads")
     model_config = SettingsConfigDict(env_file=".env")

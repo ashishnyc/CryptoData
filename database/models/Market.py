@@ -377,6 +377,74 @@ class ByBitLinearInstrumentsKline5m(SQLModel, table=True):
         UniqueConstraint("symbol", "period_start", name="uix_symbol_period_start"),
     )
 
+    def set_symbol(self, value: str):
+        try:
+            self.symbol = value
+        except:
+            print(f"Error converting symbol: {value}")
+            self.symbol = None
+
+    def set_period_start(self, value: str):
+        try:
+            self.period_start = datetime.fromtimestamp(int(value) / 1000)
+        except:
+            print(f"Error converting period start: {value}")
+            self.period_start = None
+
+    def set_open_price(self, value: str):
+        try:
+            self.open_price = Decimal(value)
+        except:
+            print(f"Error converting open price: {value}")
+            self.open_price = None
+
+    def set_high_price(self, value: str):
+        try:
+            self.high_price = Decimal(value)
+        except:
+            print(f"Error converting high price: {value}")
+            self.high_price = None
+
+    def set_low_price(self, value: str):
+        try:
+            self.low_price = Decimal(value)
+        except:
+            print(f"Error converting low price: {value}")
+            self.low_price = None
+
+    def set_close_price(self, value: str):
+        try:
+            self.close_price = Decimal(value)
+        except:
+            print(f"Error converting close price: {value}")
+            self.close_price = None
+
+    def set_volume(self, value: str):
+        try:
+            self.volume = Decimal(value)
+        except:
+            print(f"Error converting volume: {value}")
+            self.volume = None
+
+    def set_turnover(self, value: str):
+        try:
+            self.turnover = Decimal(value)
+        except:
+            print(f"Error converting turnover: {value}")
+            self.turnover = None
+
+    def is_equal(self, other):
+        return (
+            self.symbol == other.symbol
+            and self.period_start == other.period_start
+            and self.open_price.compare(other.open_price) == Decimal("0")
+            and self.high_price.compare(other.high_price) == Decimal("0")
+            and self.low_price.compare(other.low_price) == Decimal("0")
+            and self.close_price.compare(other.close_price) == Decimal("0")
+            and self.volume.compare(other.volume) == Decimal("0")
+            and self.turnover.compare(other.turnover) == Decimal("0")
+        )
+
 
 class ByBitLinearInstrumentsKline15m(SQLModel, table=True):
     __tablename__ = "bybit_linear_perp_kline_15m"

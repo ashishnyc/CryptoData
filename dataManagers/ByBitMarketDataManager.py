@@ -94,6 +94,105 @@ class ByBitDataIngestion:
         bb.set_tick_size(xchange_dict["priceFilter"]["tickSize"])
         return bb
 
+    def download_linear_instrument_klines(
+        self,
+        symbol: str,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+    ):
+        # Determine Parameters for Fetching Klines
+        start_time = start_time or (datetime.now() - timedelta(minutes=15))
+        end_time = end_time or datetime.now()
+
+        params = {
+            "category": Category.LINEAR,
+            "symbol": symbol,
+            "interval": self.default_interval,
+            "start_time": start_time,
+            "end_time": end_time,
+        }
+
+        process_start_time = time.time()
+
+        klines = self.client.fetch_kline(**params)
+
+        if not klines:
+            print(f"No klines found for {symbol}")
+            return
+
+        # Process Klines
+        processed_klines = []
+        for kline in klines:
+            new_kline = Market.ByBitLinearInstrumentsKline5m()
+            new_kline.set_symbol(symbol)
+            new_kline.set_period_start(kline[0])
+            new_kline.set_open_price(kline[1])
+            new_kline.set_high_price(kline[2])
+            new_kline.set_low_price(kline[3])
+            new_kline.set_close_price(kline[4])
+            new_kline.set_volume(kline[5])
+            new_kline.set_turnover(kline[6])
+            processed_klines.append(new_kline)
+
+        stmt = select(Market.ByBitLinearInstrumentsKline5m).where(
+            and_(
+                Market.ByBitLinearInstrumentsKline5m.symbol == symbol,
+                Market.ByBitLinearInstrumentsKline5m.period_start
+                <= datetime.fromtimestamp(int(klines[0][0]) / 1000),
+                Market.ByBitLinearInstrumentsKline5m.period_start
+                >= datetime.fromtimestamp(int(klines[-1][0]) / 1000),
+            )
+        )
+
+        # Get existing records
+        existing_records = {
+            (record.symbol, record.period_start): record
+            for record in self.dbClient.exec(stmt).all()
+        }
+
+        # Update existing records and create new ones
+        to_update = []
+        to_create = []
+
+        for kline in processed_klines:
+            key = (kline.symbol, kline.period_start)
+            existing = existing_records.get(key)
+            if existing:
+                # Skip if existing record is the same
+                if existing.is_equal(kline):
+                    continue
+                # Update existing record
+                existing.open_price = kline.open_price
+                existing.high_price = kline.high_price
+                existing.low_price = kline.low_price
+                existing.close_price = kline.close_price
+                existing.volume = kline.volume
+                existing.turnover = kline.turnover
+                to_update.append(existing)
+            else:
+                to_create.append(kline)
+
+        try:
+            # Bulk save updates
+            if to_update:
+                self.dbClient.bulk_save_objects(to_update)
+
+            # Bulk create new records
+            if to_create:
+                self.dbClient.bulk_save_objects(to_create)
+
+            self.dbClient.commit()
+
+            duration = time.time() - process_start_time
+            total_processed = len(to_update) + len(to_create)
+            print(f"Updated: {len(to_update)}, Created: {len(to_create)}")
+            print(f"Processing speed: {total_processed/duration:.2f} records/second")
+
+        except Exception as e:
+            self.dbClient.rollback()
+            print(f"Database error for {symbol}: {e}")
+            raise
+
 
 class ByBitDataService:
     def __init__(self, dbClient=None):

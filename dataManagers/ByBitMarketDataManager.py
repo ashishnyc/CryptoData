@@ -478,6 +478,8 @@ class ByBitDataService:
             stmt = stmt.where(tbl.period_start >= start_time)
         if end_time is not None:
             stmt = stmt.where(tbl.period_start <= end_time)
+
+        stmt = stmt.order_by(tbl.period_start)
         return self.dbClient.exec(stmt).all()
 
     def get_linear_instrument_klines(

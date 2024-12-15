@@ -5,11 +5,11 @@ import TradingDashboard from './TradingDashboard';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
 import Markets from './components/Markets';
+import Symbol from './components/Symbol';
 
 const Backtest = () => <div>Backtest Page</div>;
 const Files = () => <div>Files Page</div>;
 const Profile = () => <div>Profile Page</div>;
-
 
 const AppContent = () => {
   return (
@@ -21,6 +21,8 @@ const AppContent = () => {
           <Routes>
             <Route path="/" element={<TradingDashboard />} />
             <Route path="/markets" element={<Markets />} />
+            <Route path="/symbol" element={<Symbol />} />
+            <Route path="/symbol/:symbolId" element={<Symbol />} /> {/* New route for specific symbols */}
             <Route path="/backtest" element={<Backtest />} />
             <Route path="/live" element={<Files />} />
             <Route path="/profile" element={<Profile />} />

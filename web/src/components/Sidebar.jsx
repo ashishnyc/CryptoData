@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useThemeColors } from '../hooks/useThemeColors';
-import { House, ChartCandlestick, CalendarClock, Radio, Bitcoin, SquareUserRound } from 'lucide-react';
+import { House, ChartCandlestick, CalendarClock, Radio, Bitcoin, SquareUserRound, Info } from 'lucide-react';
 
 const Sidebar = () => {
     const { getColor } = useThemeColors();
@@ -17,6 +17,11 @@ const Sidebar = () => {
             id: 'markets',
             path: '/markets',
             icon: <ChartCandlestick className="w-6 h-6 stroke-current" />
+        },
+        {
+            id: 'symbol',
+            path: '/symbol',
+            icon: <Info className="w-6 h-6 stroke-current" />
         },
         {
             id: 'backtest',

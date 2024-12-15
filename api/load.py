@@ -143,9 +143,13 @@ def get_symbol_info():
         FROM relevant_periods r
         CROSS JOIN latest_time lt
         GROUP BY r.symbol, lt.max_time
+    ),
+    instruments AS (
+        SELECT symbol, price_scale
+        FROM bybit_linear_perp_instruments
     )
     SELECT 
-        symbol,
+        price_and_turnover_points.symbol,
         period_start,
         current_price,
         -- Price changes
@@ -159,8 +163,11 @@ def get_symbol_info():
         turnover_15m,
         turnover_1h,
         turnover_4h,
-        turnover_1d
+        turnover_1d,
+        price_scale
     FROM price_and_turnover_points
+    left join instruments
+    on price_and_turnover_points.symbol = instruments.symbol
     WHERE current_price IS NOT NULL
     """
     )
@@ -180,6 +187,7 @@ def get_symbol_info():
             "turnover_1h": instrument.turnover_1h,
             "turnover_4h": instrument.turnover_4h,
             "turnover_1d": instrument.turnover_1d,
+            "price_scale": instrument.price_scale,
         }
         for instrument in instruments_info
     ]

@@ -55,7 +55,8 @@ export const marketService = {
                 turnover_15m,
                 turnover_1h,
                 turnover_4h,
-                turnover_1d
+                turnover_1d,
+                price_scale: priceScale
             }) => {
                 acc[symbol] = {
                     time,
@@ -69,7 +70,8 @@ export const marketService = {
                     turnover_15m,
                     turnover_1h,
                     turnover_4h,
-                    turnover_1d
+                    turnover_1d,
+                    priceScale
                 };
                 return acc;
             }, {});

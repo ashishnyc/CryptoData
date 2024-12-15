@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useThemeColors } from '../hooks/useThemeColors';
-import { ArrowUpDown, ChevronDown, Filter } from 'lucide-react';
+import { Filter } from 'lucide-react';
 import Select from 'react-select';
 import { marketService } from '../services/api';
+import MarketDataTable from './Datatable';
 
 const Markets = () => {
     const { getColor } = useThemeColors();
@@ -13,58 +14,108 @@ const Markets = () => {
     });
     const [symbolsInfo, setSymbolsInfo] = useState({});
     const [sortedSymbols, setSortedSymbols] = useState([]);
+    const [sortConfig, setSortConfig] = useState({
+        key: null,
+        direction: 'desc'
+    });
 
     useEffect(() => {
         const fetchSymbolsInfo = async () => {
-            const data = await marketService.getSymbolsInfo();
-            setSymbolsInfo(data);
-            setSortedSymbols(Object.keys(data));
+            try {
+                const data = await marketService.getSymbolsInfo();
+                if (data && typeof data === 'object' && !Array.isArray(data)) {
+                    setSymbolsInfo(data);
+                    setSortedSymbols(Object.keys(data));
+                } else if (Array.isArray(data)) {
+                    const formattedData = data.reduce((acc, item) => {
+                        acc[item.symbol] = item;
+                        return acc;
+                    }, {});
+                    setSymbolsInfo(formattedData);
+                    setSortedSymbols(Object.keys(formattedData));
+                }
+            } catch (error) {
+                console.error('Error fetching symbols info:', error);
+                setSymbolsInfo({});
+                setSortedSymbols([]);
+            }
         };
 
         fetchSymbolsInfo();
     }, []);
 
-    // Format percentage with fixed decimals and + sign for positive values
+    // Formatting utilities
+    const formatPrice = (price, priceScale) => {
+        if (price === undefined || price === null || typeof price !== 'number') {
+            return '0.00';
+        }
+        const scale = typeof priceScale === 'number' && priceScale >= 0 ? priceScale : 2;
+        return `${price.toLocaleString(undefined, {
+            minimumFractionDigits: scale,
+            maximumFractionDigits: scale
+        })}`;
+    };
+
+
     const formatPercentage = (value) => {
-        const formatted = Number(value).toFixed(2);
+        if (value === undefined || value === null || typeof value !== 'number') {
+            return '0.00%';
+        }
+        const formatted = Number(value * 100).toFixed(2);
         return formatted > 0 ? `+${formatted}%` : `${formatted}%`;
     };
-
     const handleFilterChange = (e) => {
-        setFilters({
-            ...filters,
+        setFilters(prev => ({
+            ...prev,
             [e.target.name]: e.target.value
-        });
-    };
-
-    const handleSortChange = (selectedOption) => {
-        setFilters({
-            ...filters,
-            sortBy: selectedOption
-        });
-
-        if (selectedOption) {
-            const sorted = [...sortedSymbols].sort((a, b) => {
-                const aValue = getValueForSort(symbolsInfo[a], selectedOption.value);
-                const bValue = getValueForSort(symbolsInfo[b], selectedOption.value);
-                return bValue - aValue; // Descending order
-            });
-            setSortedSymbols(sorted);
-        }
+        }));
     };
 
     const getValueForSort = (symbolData, sortKey) => {
+        if (!symbolData) return 0;
         switch (sortKey) {
+            case 'symbol':
+                return symbolData.symbol;
+            case 'price':
+                return symbolData.current_price || 0;
             case 'volume24h':
-                return symbolData.turnover_1d;
+                return symbolData.turnover_1d || 0;
             case 'change1h':
-                return symbolData.change_1h_pct;
+                return symbolData.change_1h_pct || 0;
             case 'change4h':
-                return symbolData.change_4h_pct;
+                return symbolData.change_4h_pct || 0;
             case 'change1d':
-                return symbolData.change_1d_pct;
+                return symbolData.change_1d_pct || 0;
+            case 'volume':
+                return symbolData.turnover_1h || 0;
             default:
                 return 0;
+        }
+    };
+
+    const handleSort = (key) => {
+        let direction = 'desc';
+        if (sortConfig.key === key && sortConfig.direction === 'desc') {
+            direction = 'asc';
+        }
+        setSortConfig({ key, direction });
+
+        const sorted = [...sortedSymbols].sort((a, b) => {
+            const aValue = getValueForSort(symbolsInfo[a], key);
+            const bValue = getValueForSort(symbolsInfo[b], key);
+            return direction === 'asc' ? aValue - bValue : bValue - aValue;
+        });
+        setSortedSymbols(sorted);
+    };
+
+    const handleSortChange = (selectedOption) => {
+        setFilters(prev => ({
+            ...prev,
+            sortBy: selectedOption
+        }));
+
+        if (selectedOption) {
+            handleSort(selectedOption.value);
         }
     };
 
@@ -79,7 +130,7 @@ const Markets = () => {
 
         if (filters.minVolume) {
             filtered = filtered.filter(symbol =>
-                symbolsInfo[symbol].turnover_1d >= Number(filters.minVolume)
+                (symbolsInfo[symbol]?.turnover_1d || 0) >= Number(filters.minVolume)
             );
         }
 
@@ -93,7 +144,6 @@ const Markets = () => {
         { value: 'change1d', label: '1d Change' }
     ];
 
-    // Custom styles for react-select to match theme
     const selectStyles = {
         control: (base) => ({
             ...base,
@@ -118,7 +168,7 @@ const Markets = () => {
     };
 
     return (
-        <div className={`p-6 ${getColor('background.primary')}`}>
+        <div className={`p-6 h-full flex flex-col ${getColor('background.primary')}`}>
             {/* Filters Section */}
             <div className={`mb-6 p-4 rounded-lg ${getColor('background.secondary')}`}>
                 <div className="flex flex-wrap gap-4 items-end">
@@ -174,50 +224,18 @@ const Markets = () => {
             </div>
 
             {/* Table Section */}
-            <div className="overflow-x-auto">
-                <table className="w-full">
-                    <thead>
-                        <tr className={`border-b ${getColor('border.primary')}`}>
-                            <th className={`py-3 text-left ${getColor('text.primary')}`}>Symbol</th>
-                            <th className={`py-3 text-right ${getColor('text.primary')}`}>Current Price</th>
-                            <th className={`py-3 text-right ${getColor('text.primary')}`}>24h Volume</th>
-                            <th className={`py-3 text-right ${getColor('text.primary')}`}>1h Change</th>
-                            <th className={`py-3 text-right ${getColor('text.primary')}`}>4h Change</th>
-                            <th className={`py-3 text-right ${getColor('text.primary')}`}>1d Change</th>
-                            <th className={`py-3 text-right ${getColor('text.primary')}`}>Volume (1h/4h/1d)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {sortedSymbols.map((symbol) => (
-                            <tr
-                                key={symbol}
-                                className={`border-b ${getColor('border.primary')} hover:${getColor('background.secondary')}`}
-                            >
-                                <td className={`py-3 ${getColor('text.primary')}`}>{symbol}</td>
-                                <td className={`text-right ${getColor('text.primary')}`}>
-                                    ${symbolsInfo[symbol].current_price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                </td>
-                                <td className={`text-right ${getColor('text.primary')}`}>
-                                    ${symbolsInfo[symbol].turnover_1d.toLocaleString()}
-                                </td>
-                                <td className={`text-right ${symbolsInfo[symbol].change_1h_pct >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                                    {formatPercentage(symbolsInfo[symbol].change_1h_pct * 100)}
-                                </td>
-                                <td className={`text-right ${symbolsInfo[symbol].change_4h_pct >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                                    {formatPercentage(symbolsInfo[symbol].change_4h_pct * 100)}
-                                </td>
-                                <td className={`text-right ${symbolsInfo[symbol].change_1d_pct >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                                    {formatPercentage(symbolsInfo[symbol].change_1d_pct * 100)}
-                                </td>
-                                <td className={`text-right ${getColor('text.primary')}`}>
-                                    ${symbolsInfo[symbol].turnover_5m.toLocaleString()} /
-                                    ${symbolsInfo[symbol].turnover_15m.toLocaleString()} /
-                                    ${symbolsInfo[symbol].turnover_1h.toLocaleString()}
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+            <div className="flex-1 flex flex-col min-h-0">
+                <div className="overflow-x-auto">
+                    <MarketDataTable
+                        symbols={sortedSymbols}
+                        symbolsInfo={symbolsInfo}
+                        sortConfig={sortConfig}
+                        onSort={handleSort}
+                        formatPrice={formatPrice}
+                        formatPercentage={formatPercentage}
+                        getColor={getColor}
+                    />
+                </div>
             </div>
         </div>
     );

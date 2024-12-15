@@ -437,6 +437,7 @@ class ByBitDataService:
         timeframe: str,
         start_time: datetime = None,
         end_time: datetime = None,
+        output: str = "pandas",
     ):
         if start_time is None:
             start_time = datetime(1970, 1, 1)
@@ -469,6 +470,7 @@ class ByBitDataService:
         timeframe: str,
         start_time: datetime = None,
         end_time: datetime = None,
+        output: str = "pandas",
     ):
         tbl = self._get_kline_table(timeframe)
         stmt = select(tbl).where(tbl.symbol == symbol)

@@ -445,6 +445,27 @@ class ByBitLinearInstrumentsKline5m(SQLModel, table=True):
             and self.turnover.compare(other.turnover) == Decimal("0")
         )
 
+    def to_dict(self):
+        return {
+            "symbol": self.symbol,
+            "period_start": self.period_start,
+            "open_price": self.open_price,
+            "high_price": self.high_price,
+            "low_price": self.low_price,
+            "close_price": self.close_price,
+            "volume": self.volume,
+            "turnover": self.turnover,
+        }
+
+    def process_xchange_info(self, xchange_data: dict):
+        self.set_period_start(xchange_data[0])
+        self.set_open_price(xchange_data[1])
+        self.set_high_price(xchange_data[2])
+        self.set_low_price(xchange_data[3])
+        self.set_close_price(xchange_data[4])
+        self.set_volume(xchange_data[5])
+        self.set_turnover(xchange_data[6])
+
 
 class ByBitLinearInstrumentsKline15m(SQLModel, table=True):
     __tablename__ = "bybit_linear_perp_kline_15m"

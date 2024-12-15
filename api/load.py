@@ -7,7 +7,7 @@ from fastapi import (
     WebSocketDisconnect,
 )
 from sqlmodel import text
-from dataManagers.ByBitMarketDataManager import ByBitMarketDataManager
+from dataManagers.ByBitMarketDataManager import ByBitDataService
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="CryptoData API")
@@ -58,8 +58,8 @@ async def websocket_endpoint(websocket: WebSocket):
 
 @app.get("/api/symbols")
 def read_instruments():
-    bb = ByBitMarketDataManager()
-    instruments = bb.get_current_linear_instruments(quote_coin="USDT")
+    bb = ByBitDataService()
+    instruments = bb.get_linear_usdt_instruments(quote_coin="USDT", data_source="db")
     output = []
     for instrument in instruments:
         output.append((instrument.id, instrument.symbol, instrument.price_scale))
@@ -71,8 +71,10 @@ def read_klines(
     symbol: str,
     timeframe: str = Query(None, description="Timeframe for the klines"),
 ):
-    bb = ByBitMarketDataManager()
-    klines = bb.get_linear_instruments_klines(symbol=symbol, timeframe=timeframe)
+    bb = ByBitDataService()
+    klines = bb.get_linear_instrument_klines(
+        symbol=symbol, timeframe=timeframe, data_source="db"
+    )
     formatted_klines = [
         {
             "time": kline.period_start.timestamp(),
@@ -89,7 +91,7 @@ def read_klines(
 
 @app.get("/api/symbols/info")
 def get_symbol_info():
-    bb = ByBitMarketDataManager()
+    bb = ByBitDataService()
     query = text(
         """
     WITH latest_time AS (

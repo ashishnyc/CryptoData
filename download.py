@@ -1,22 +1,20 @@
 import argparse
-from dataManagers.ByBitMarketDataManager import ByBitMarketDataManager
+from dataManagers.ByBitMarketDataManager import ByBitDataIngestion
 import utils
 
 
 def main(symbol=None, start_date=None, end_date=None):
-    bb = ByBitMarketDataManager()
+    bb = ByBitDataIngestion()
     if start_date or end_date:
         start_date, end_date = utils.parse_dates(start_date, end_date)
         for single_date in utils.daterange(start_date, end_date):
             print(f"running for {single_date}")
-            bb.process_linear_instruments_klines(symbol=symbol, kline_date=single_date)
-            bb.aggregate_linear_instruments_klines(
-                symbol=symbol, kline_date=single_date
-            )
+            bb.download_klines_by_date(kline_date=single_date, symbol=symbol)
+            bb.aggregate_klines_by_date(kline_date=single_date, symbol=symbol)
 
     else:
-        bb.process_linear_perpetual_usdt()
-        bb.process_linear_instruments_klines()
+        bb.download_linear_usdt_instruments()
+        bb.download_linear_instrument_klines(symbol=symbol)
         bb.aggregate_linear_instruments_klines()
 
 

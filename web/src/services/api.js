@@ -39,9 +39,9 @@ export const marketService = {
         }
     },
 
-    getSymbolsInfo: async () => {
+    getSymbolsInfo: async (symbol) => {
         try {
-            const response = await api.get('/symbols/info');
+            const response = await api.get(`/symbols/${symbol}`);
             const symbolsInfoMap = response.data.reduce((acc, {
                 symbol,
                 time,
@@ -56,7 +56,9 @@ export const marketService = {
                 turnover_1h,
                 turnover_4h,
                 turnover_1d,
-                price_scale: priceScale
+                price_scale: priceScale,
+                max_price_24h,
+                min_price_24h
             }) => {
                 acc[symbol] = {
                     time,
@@ -71,7 +73,9 @@ export const marketService = {
                     turnover_1h,
                     turnover_4h,
                     turnover_1d,
-                    priceScale
+                    priceScale,
+                    max_price_24h,
+                    min_price_24h
                 };
                 return acc;
             }, {});

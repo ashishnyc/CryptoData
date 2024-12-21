@@ -1,5 +1,5 @@
 import json
-from typing import List
+from typing import List, Optional
 from fastapi import (
     FastAPI,
     Query,
@@ -89,24 +89,36 @@ def read_klines(
     return formatted_klines
 
 
-@app.get("/api/symbols/info")
-def get_symbol_info():
+@app.get("/api/symbols/{symbol}")
+def get_symbol_info(symbol: Optional[str] = None):
+    if symbol is None:
+        symbol = "_ALL__"
     bb = ByBitDataService()
     query = text(
         """
     WITH latest_time AS (
         SELECT MAX(period_start) as max_time 
         FROM bybit_linear_perp_kline_5m
+        WHERE (
+            symbol = '{symbol}'
+            OR '{symbol}' = '_ALL__'
+        )
     ),
     relevant_periods AS (
         SELECT 
             symbol, 
             period_start, 
             close_price,
-            turnover
+            turnover,
+            high_price,
+            low_price
         FROM bybit_linear_perp_kline_5m k
         CROSS JOIN latest_time lt
         WHERE period_start >= lt.max_time - INTERVAL '1 day'
+        AND (
+            symbol = '{symbol}'
+            OR '{symbol}' = '_ALL__'
+        )
     ),
     price_and_turnover_points AS (
         SELECT 
@@ -139,7 +151,11 @@ def get_symbol_info():
             SUM(CASE 
                 WHEN r.period_start > lt.max_time - INTERVAL '1 day' 
                 THEN turnover 
-                END) as turnover_1d
+                END) as turnover_1d,
+            -- Max Prices 
+            MAX(CASE WHEN r.period_start = lt.max_time - INTERVAL '1 day' THEN high_price END) as max_price_24h,
+            -- Low Prices
+            MIN(CASE WHEN r.period_start = lt.max_time - INTERVAL '1 day' THEN low_price END) as min_price_24h
         FROM relevant_periods r
         CROSS JOIN latest_time lt
         GROUP BY r.symbol, lt.max_time
@@ -147,6 +163,10 @@ def get_symbol_info():
     instruments AS (
         SELECT symbol, price_scale
         FROM bybit_linear_perp_instruments
+        where (
+            symbol = '{symbol}'
+            OR '{symbol}' = '_ALL__'
+        )
     )
     SELECT 
         price_and_turnover_points.symbol,
@@ -164,12 +184,16 @@ def get_symbol_info():
         turnover_1h,
         turnover_4h,
         turnover_1d,
-        price_scale
+        price_scale,
+        max_price_24h,
+        min_price_24h
     FROM price_and_turnover_points
     left join instruments
     on price_and_turnover_points.symbol = instruments.symbol
     WHERE current_price IS NOT NULL
-    """
+    """.format(
+            symbol=symbol
+        )
     )
     instruments_info = bb.dbClient.exec(query).all()
     formatted_instruments = [
@@ -188,6 +212,8 @@ def get_symbol_info():
             "turnover_4h": instrument.turnover_4h,
             "turnover_1d": instrument.turnover_1d,
             "price_scale": instrument.price_scale,
+            "max_price_24h": instrument.max_price_24h,
+            "min_price_24h": instrument.min_price_24h,
         }
         for instrument in instruments_info
     ]

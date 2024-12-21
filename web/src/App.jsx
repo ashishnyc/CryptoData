@@ -22,7 +22,7 @@ const AppContent = () => {
             <Route path="/" element={<TradingDashboard />} />
             <Route path="/markets" element={<Markets />} />
             <Route path="/symbol" element={<Symbol />} />
-            <Route path="/symbol/:symbolId" element={<Symbol />} /> {/* New route for specific symbols */}
+            <Route path="/symbol/:symbolId" element={<Symbol />} />
             <Route path="/backtest" element={<Backtest />} />
             <Route path="/live" element={<Files />} />
             <Route path="/profile" element={<Profile />} />

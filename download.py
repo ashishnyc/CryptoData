@@ -15,7 +15,7 @@ def main(symbol=None, start_date=None, end_date=None):
     else:
         bb.download_linear_usdt_instruments()
         bb.download_linear_instrument_klines(symbol=symbol)
-        bb.aggregate_linear_instruments_klines()
+        bb.aggregate_linear_instruments_klines(symbol=symbol)
 
 
 if __name__ == "__main__":

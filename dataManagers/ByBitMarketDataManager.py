@@ -4,8 +4,7 @@ from decimal import Decimal
 import json
 from sqlmodel import Session, and_, select, text, insert, SQLModel, func
 from xchanges.ByBit import MarketData, Category, Interval, ContractType
-from database.models import Market
-from database.models.Market import Timeframe
+from database.models import Market, PriceLevels
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from database import Operations as dbOperations
 from datetime import datetime, date, timedelta
@@ -15,6 +14,7 @@ import pandas as pd
 from redis import ConnectionPool, Redis
 from sqlmodel.ext.asyncio.session import AsyncSession
 from collections import namedtuple
+from utils import pivotid
 
 
 class ByBitDataIngestion:
@@ -30,6 +30,10 @@ class ByBitDataIngestion:
         self.quote_coin = "USDT"
         self.instrument_status = "Trading"
         self.bb_data_service = ByBitDataService(dbClient=self.dbClient)
+
+        # currently looking at 10 candles can extend to something like [10, 20, 30]
+        self.pivots_lookbacks = [10]
+        self.pivots_timeframes = ["1h"]
 
     def download_linear_usdt_instruments(self, limit=1000):
         # Fetch ByBit instruments
@@ -376,12 +380,65 @@ class ByBitDataIngestion:
             end_time=end_time,
         )
 
+    def process_pivot_levels(self, symbol: str):
+        for timeframe in self.pivots_timeframes:
+            result = self.bb_data_service.get_linear_instrument_klines(
+                symbol=symbol,
+                timeframe=timeframe,
+                data_source="db",
+            )
+            data = [row.to_dict() for row in result]
+            df = pd.DataFrame(data)
+            for lookback in self.pivots_lookbacks:
+                df["pivot"] = df.apply(
+                    lambda x: pivotid(df, x.name, lookback, lookback), axis=1
+                )
+                for _, row in df.iterrows():
+                    if row.pivot not in (1, 2):
+                        continue
+                    stmt = (
+                        pg_insert(PriceLevels.PriceLevel)
+                        .values(
+                            exchange="bybit",
+                            symbol=symbol,
+                            instrument_type="perp",
+                            timeframe=timeframe,
+                            lookback_period=lookback,
+                            period_start=row.period_start,
+                            price_level=(
+                                row.low_price if row.pivot == 1 else row.high_price
+                            ),
+                            is_support=row.pivot == 1,
+                            is_resistance=row.pivot == 2,
+                        )
+                        .on_conflict_do_update(
+                            index_elements=[  # unique index
+                                "exchange",
+                                "symbol",
+                                "instrument_type",
+                                "timeframe",
+                                "period_start",
+                                "lookback_period",
+                            ],
+                            set_={
+                                "price_level": (
+                                    row.low_price if row.pivot == 1 else row.high_price
+                                ),
+                                "is_support": row.pivot == 1,
+                                "is_resistance": row.pivot == 2,
+                            },
+                        )
+                    )
+                    self.dbClient.exec(stmt)
+        self.dbClient.commit()
+
 
 class ByBitDataService:
     def __init__(self, dbClient=None):
         self.dbClient = self._get_dbClient(dbClient)
         self.redis_client = Redis(connection_pool=self._redis_connection_pool())
         self.default_client = "redis"
+        self.exchange = "bybit"
 
     def _get_dbClient(self, dbClient):
         if dbClient is not None:
@@ -520,3 +577,20 @@ class ByBitDataService:
             .order_by(tbl.period_start.desc())
         )
         return self.dbClient.exec(stmt).first()
+
+    def get_symbols_price_pivot_levels(
+        self,
+        symbol: str = "BTCUSDT",
+        timeframe: str = "1h",
+        lookback_period: int = 10,
+    ):
+        tbl = PriceLevels.PriceLevel
+        stmt = select(tbl).where(
+            and_(
+                tbl.exchange == self.exchange,
+                tbl.symbol == symbol,
+                tbl.timeframe == timeframe,
+                tbl.lookback_period == lookback_period,
+            )
+        )
+        return self.dbClient.exec(stmt).all()

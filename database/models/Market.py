@@ -535,6 +535,18 @@ class ByBitLinearInstrumentsKline4h(SQLModel, table=True):
         UniqueConstraint("symbol", "period_start", name="uix_symbol_period_start_4h"),
     )
 
+    def to_dict(self):
+        return {
+            "symbol": self.symbol,
+            "period_start": self.period_start,
+            "open_price": self.open_price,
+            "high_price": self.high_price,
+            "low_price": self.low_price,
+            "close_price": self.close_price,
+            "volume": self.volume,
+            "turnover": self.turnover,
+        }
+
 
 class ByBitLinearInstrumentsKline1d(SQLModel, table=True):
     __tablename__ = "bybit_linear_perp_kline_1d"
@@ -553,6 +565,18 @@ class ByBitLinearInstrumentsKline1d(SQLModel, table=True):
     __table_args__ = (
         UniqueConstraint("symbol", "period_start", name="uix_symbol_period_start_1d"),
     )
+
+    def to_dict(self):
+        return {
+            "symbol": self.symbol,
+            "period_start": self.period_start,
+            "open_price": self.open_price,
+            "high_price": self.high_price,
+            "low_price": self.low_price,
+            "close_price": self.close_price,
+            "volume": self.volume,
+            "turnover": self.turnover,
+        }
 
 
 class Timeframe(Enum):

@@ -361,14 +361,14 @@ class ByBitDataIngestion:
                     )
                     or datetime(1970, 1, 1)
                 )
-                start_time = start_time or latest_period_start
-                end_time = end_time or datetime.now()
+                start_time_final = start_time or latest_period_start
+                end_time_final = end_time or datetime.now()
 
                 self._aggregate_linear_instruments_klines(
                     symbol=symbol,
                     timeframe=timeframe,
-                    start_time=start_time,
-                    end_time=end_time,
+                    start_time=start_time_final,
+                    end_time=end_time_final,
                 )
 
     def aggregate_klines_by_date(self, kline_date: date, symbol: str = None):
